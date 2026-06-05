@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <link rel="stylesheet" href="leaflet.css" />
+  <style>
+    html, body, #map { margin: 0; height: 100%; width: 100%; background: #17181d; }
+    .pulse {
+      width: 18px; height: 18px; border-radius: 50%;
+      box-shadow: 0 0 0 rgba(255,213,0,0.6); animation: pulse 1.6s infinite;
+      border: 2px solid #fff;
+    }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255,213,0,0.55); }
+      70%  { box-shadow: 0 0 0 22px rgba(255,213,0,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,213,0,0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="leaflet.js"></script>
+  <script>
+    function qp(name){ return new URLSearchParams(location.search).get(name); }
+    var lat = parseFloat(qp('lat')), lng = parseFloat(qp('lng'));
+    var type = parseInt(qp('type') || '8', 10);
+    function colorFor(t){ if(t===3) return '#ff8000'; if(t===0||t===2) return '#ffd500'; return '#c9cbd6'; }
+
+    if (!isNaN(lat) && !isNaN(lng)) {
+      var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([lat, lng], 15);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+      var icon = L.divIcon({ className: '', html: '<div class="pulse" style="background:'+colorFor(type)+'"></div>', iconSize: [18,18], iconAnchor: [9,9] });
+      L.marker([lat, lng], { icon: icon }).addTo(map);
+      // התאמת גודל אחרי שה-WebView קיבל מידות
+      setTimeout(function(){ map.invalidateSize(); map.setView([lat,lng], 15); }, 250);
+    } else {
+      document.getElementById('map').innerHTML = '';
+    }
+  </script>
+</body>
+</html>

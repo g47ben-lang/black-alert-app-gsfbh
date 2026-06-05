@@ -47,9 +47,11 @@ class AlertActivity : AppCompatActivity() {
         val cities = intent.getStringExtra(EXTRA_CITIES) ?: ""
         val address = intent.getStringExtra(EXTRA_ADDRESS) ?: ""
         val note = intent.getStringExtra(EXTRA_NOTE) ?: ""
+        val eventType = intent.getIntExtra(EXTRA_EVENT_TYPE, 8)
         val withSound = intent.getBooleanExtra(EXTRA_WITH_SOUND, true)
 
         binding.alertTitle.text = title
+        binding.alertTitle.setTextColor(colorForEventType(eventType))
         binding.alertCities.text = cities
         binding.alertAddress.text = if (address.isBlank()) "" else "📍 $address"
         binding.alertAddress.visibility = if (address.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
@@ -64,6 +66,8 @@ class AlertActivity : AppCompatActivity() {
             )
         } else null
 
+        loadMap(target, eventType)
+
         binding.btnNavigate.isEnabled = target != null
         binding.btnNavigate.alpha = if (target != null) 1f else 0.4f
         binding.btnNavigate.setOnClickListener {
@@ -75,6 +79,24 @@ class AlertActivity : AppCompatActivity() {
         binding.btnClose.setOnClickListener { stopRinging(); finish() }
 
         if (withSound) startRinging()
+    }
+
+    private fun colorForEventType(t: Int): Int = when (t) {
+        3 -> 0xFFFF8000.toInt()        // נסיון הסגרה
+        0, 2 -> 0xFFFFD500.toInt()     // מעצר מ.צ / מחסומים
+        else -> 0xFFC9CBD6.toInt()     // כללי
+    }
+
+    @android.annotation.SuppressLint("SetJavaScriptEnabled")
+    private fun loadMap(target: NavTarget?, eventType: Int) {
+        if (target == null) {
+            binding.mapView.visibility = android.view.View.GONE
+            return
+        }
+        binding.mapView.settings.javaScriptEnabled = true
+        binding.mapView.setBackgroundColor(0xFF17181D.toInt())
+        val url = "file:///android_asset/alert_map.html?lat=${target.lat}&lng=${target.lng}&type=$eventType"
+        binding.mapView.loadUrl(url)
     }
 
     private fun showOverLockscreen() {

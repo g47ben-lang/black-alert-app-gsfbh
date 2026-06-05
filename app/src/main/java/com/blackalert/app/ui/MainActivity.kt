@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnHistory.setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
         binding.btnTest.setOnClickListener { fireTestAlert() }
         binding.btnBattery.setOnClickListener { requestIgnoreBatteryOptimizations() }
+        binding.btnAbout.setOnClickListener { showAbout() }
 
         requestNotificationPermission()
     }
@@ -50,6 +51,33 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshUi()
+        checkUpdateAsync()
+    }
+
+    private fun checkUpdateAsync() {
+        val now = System.currentTimeMillis()
+        if (now - prefs.lastUpdateCheckMs < 6L * 60 * 60 * 1000) return
+        kotlin.concurrent.thread {
+            val u = com.blackalert.app.net.UpdateChecker.checkForUpdate()
+            prefs.lastUpdateCheckMs = System.currentTimeMillis()
+            if (u != null && u.tag != prefs.dismissedUpdateTag) runOnUiThread {
+                if (!isFinishing) showUpdateDialog(u)
+            }
+        }
+    }
+
+    private fun showUpdateDialog(u: com.blackalert.app.net.UpdateChecker.Update) {
+        val notes = if (u.notes.isBlank()) "" else "\n\n${u.notes.take(400)}"
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("עדכון זמין — ${u.tag}")
+            .setMessage("גרסה חדשה זמינה להורדה מגיטהאב.$notes")
+            .setPositiveButton("עדכן") { _, _ ->
+                val url = u.apkUrl ?: u.pageUrl
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            }
+            .setNegativeButton("אחר כך", null)
+            .setNeutralButton("דלג על גרסה זו") { _, _ -> prefs.dismissedUpdateTag = u.tag }
+            .show()
     }
 
     private fun refreshUi() {
@@ -86,6 +114,27 @@ class MainActivity : AppCompatActivity() {
             test, withSound = true,
             target = NavTarget(32.0874, 34.8324, "בני ברק, רחוב רבי עקיבא"), prefs = prefs
         )
+    }
+
+    private fun showAbout() {
+        val v = com.blackalert.app.BuildConfig.VERSION_NAME
+        val msg = android.text.Html.fromHtml(
+            "<b>צבע שחור</b> — גרסה $v<br><br>" +
+            "<b>קרדיטים:</b><br>" +
+            "• מערכת ההתראות <b>\"צבע שחור\"</b><br>" +
+            "• יוצר שרת ההתראות — <a href=\"https://mitmachim.top/user/dudua99\">dudua99</a><br>" +
+            "• פיתוח האפליקציה — <a href=\"https://github.com/613avi\">613avi</a><br>" +
+            "• ולכלל התורמים לפרויקט 🙏<br><br>" +
+            "<a href=\"https://github.com/613avi/black-alert-app\">דף הפרויקט בגיטהאב</a>",
+            android.text.Html.FROM_HTML_MODE_COMPACT
+        )
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("אודות")
+            .setMessage(msg)
+            .setPositiveButton("סגור", null)
+            .show()
+        (dialog.findViewById<android.widget.TextView>(android.R.id.message))?.movementMethod =
+            android.text.method.LinkMovementMethod.getInstance()
     }
 
     private fun isIgnoringBattery(): Boolean {

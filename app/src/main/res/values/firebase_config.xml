@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  הגדרות Firebase ל-push (אופציונלי). מלא מתוך google-services.json של פרויקט ה-Firebase:
+    fb_app_id        = mobilesdk_app_id            (לדוגמה 1:123456789:android:abcdef)
+    fb_api_key       = current_key                 (api_key)
+    fb_project_id    = project_id
+    fb_sender_id     = project_number              (GCM sender id)
+  כל עוד הערכים נשארים placeholder — ה-push כבוי והאפליקציה עובדת ב-polling בלבד.
+  קובץ זה אינו מכיל סוד: ערכי Firebase client הם ממילא ציבוריים (מוטמעים באפליקציה).
+-->
+<resources>
+    <string name="fb_app_id" translatable="false">UNSET</string>
+    <string name="fb_api_key" translatable="false">UNSET</string>
+    <string name="fb_project_id" translatable="false">UNSET</string>
+    <string name="fb_sender_id" translatable="false">UNSET</string>
+    <!-- שם ה-topic ש-clients נרשמים אליו וה-relay דוחף אליו -->
+    <string name="fb_topic" translatable="false">alerts</string>
+</resources>

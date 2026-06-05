@@ -2,8 +2,25 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="alert_red">#FFD32F2F</color>
-    <color name="alert_red_dark">#FFB71C1C</color>
-    <color name="bg_dark">#FF1A1A1A</color>
-    <color name="accent">#FFFF5252</color>
+
+    <!-- פלטת התוסף (Material 3 dark + צהוב) -->
+    <color name="primary">#FFFFD500</color>
+    <color name="on_primary">#FF1F1C00</color>
+    <color name="bg">#FF121216</color>
+    <color name="surface">#FF17181D</color>
+    <color name="surface_2">#FF23242C</color>
+    <color name="surface_3">#FF2A2B34</color>
+    <color name="on_surface">#FFE7E7EC</color>
+    <color name="on_surface_var">#FFA8AAB5</color>
+
+    <!-- צבעי סוג אירוע (לפי getColorForEventType בתוסף) -->
+    <color name="type_warn">#FFFFD500</color>   <!-- 0,2 -->
+    <color name="type_extradition">#FFFF8000</color> <!-- 3 -->
+    <color name="type_general">#FFC9CBD6</color> <!-- אחר -->
+
+    <!-- תאימות לאחור לשמות ישנים בקוד -->
+    <color name="alert_red">#FFFFD500</color>
+    <color name="alert_red_dark">#FFFFD500</color>
+    <color name="accent">#FFFFD500</color>
+    <color name="bg_dark">#FF121216</color>
 </resources>

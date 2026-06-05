@@ -75,6 +75,36 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("serviceEnabled", true)
         set(v) = sp.edit { putBoolean("serviceEnabled", v) }
 
+    // --- בדיקת עדכונים ---
+    var lastUpdateCheckMs: Long
+        get() = sp.getLong("lastUpdateCheckMs", 0L)
+        set(v) = sp.edit { putLong("lastUpdateCheckMs", v) }
+    /** ה-tag שכבר הוצג למשתמש (כדי לא להציק על אותה גרסה שוב ושוב). */
+    var dismissedUpdateTag: String
+        get() = sp.getString("dismissedUpdateTag", "") ?: ""
+        set(v) = sp.edit { putString("dismissedUpdateTag", v) }
+
+    // --- מצב מסירה (failover: push בגוגל / בדיקה ידנית) ---
+    // "auto" = push אם זמין (Play Services + Firebase מוגדר), אחרת polling.
+    // "push" = כפה push.  "poll" = כפה בדיקה ידנית (תמיד עובד, גם בלי Play Services).
+    var deliveryMode: String
+        get() = sp.getString("deliveryMode", "auto") ?: "auto"
+        set(v) = sp.edit { putString("deliveryMode", v) }
+
+    /** במצב push — כל כמה דקות בכל זאת לבדוק כ-safety-net (מניעת כשל אם push לא הגיע). 0=כבוי. */
+    var safetyPollMinutes: Int
+        get() = sp.getInt("safetyPollMinutes", 15).coerceIn(0, 240)
+        set(v) = sp.edit { putInt("safetyPollMinutes", v.coerceIn(0, 240)) }
+
+    // --- תדירות בדיקה אדפטיבית (חיסכון סוללה) ---
+    // מסך דולק = תגובה מהירה; מסך כבוי = מרווח ארוך יותר (ו-Doze ממילא מאט בשינה עמוקה).
+    var pollOnSec: Int
+        get() = sp.getInt("pollOnSec", 10).coerceIn(5, 120)
+        set(v) = sp.edit { putInt("pollOnSec", v.coerceIn(5, 120)) }
+    var pollOffSec: Int
+        get() = sp.getInt("pollOffSec", 30).coerceIn(10, 300)
+        set(v) = sp.edit { putInt("pollOffSec", v.coerceIn(10, 300)) }
+
     // --- מקור נתונים (מעבר מסננים: NetFree עלול לחסום פנייה ישירה ל-black-alert) ---
     // ברירת מחדל: פנייה ישירה. אפשר להפנות ל-proxy/Cloud Function שמשקף את אותו JSON
     // (למשל firestore.googleapis.com ברשימה לבנה) במכשירים מסוננים.

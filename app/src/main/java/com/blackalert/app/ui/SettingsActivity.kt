@@ -82,6 +82,35 @@ class SettingsActivity : AppCompatActivity() {
             prefs.quietTo = binding.quietTo.text.toString().ifBlank { "07:00" }
         }
 
+        // מסירה ותדירות (failover push / בדיקה ידנית)
+        val deliveryModes = listOf("auto" to "אוטומטי", "push" to "push (גוגל)", "poll" to "בדיקה ידנית")
+        binding.deliverySpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, deliveryModes.map { it.second })
+        binding.deliverySpinner.setSelection(deliveryModes.indexOfFirst { it.first == prefs.deliveryMode }.coerceAtLeast(0))
+        binding.deliverySpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: android.widget.AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) {
+                prefs.deliveryMode = deliveryModes[pos].first
+                updateDeliveryStatus()
+            }
+            override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+        }
+        binding.pollOn.setText(prefs.pollOnSec.toString())
+        binding.pollOff.setText(prefs.pollOffSec.toString())
+        binding.safetyPoll.setText(prefs.safetyPollMinutes.toString())
+        updateDeliveryStatus()
+        binding.btnSaveDelivery.setOnClickListener {
+            prefs.pollOnSec = binding.pollOn.text.toString().toIntOrNull() ?: prefs.pollOnSec
+            prefs.pollOffSec = binding.pollOff.text.toString().toIntOrNull() ?: prefs.pollOffSec
+            prefs.safetyPollMinutes = binding.safetyPoll.text.toString().toIntOrNull() ?: prefs.safetyPollMinutes
+            binding.pollOn.setText(prefs.pollOnSec.toString())
+            binding.pollOff.setText(prefs.pollOffSec.toString())
+            binding.safetyPoll.setText(prefs.safetyPollMinutes.toString())
+            com.blackalert.app.service.PushManager.applyDelivery(this)
+            com.blackalert.app.service.PollingService.stop(this)
+            if (prefs.serviceEnabled) com.blackalert.app.service.PollingService.start(this)
+            updateDeliveryStatus()
+            android.widget.Toast.makeText(this, "נשמר", android.widget.Toast.LENGTH_SHORT).show()
+        }
+
         // מקור נתונים (מתקדם) — שינוי דורש הפעלה מחדש של השירות כדי שייכנס לתוקף
         binding.sourceUrl.setText(prefs.sourceBaseUrl)
         binding.btnSaveSource.setOnClickListener {
@@ -92,6 +121,16 @@ class SettingsActivity : AppCompatActivity() {
             com.blackalert.app.service.PollingService.stop(this)
             if (prefs.serviceEnabled) com.blackalert.app.service.PollingService.start(this)
             android.widget.Toast.makeText(this, "מקור עודכן: ${prefs.sourceBaseUrl}", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateDeliveryStatus() {
+        val eff = com.blackalert.app.service.PushManager.effectiveMode(this)
+        val available = com.blackalert.app.service.PushManager.isPushAvailable(this)
+        binding.deliveryStatus.text = when {
+            eff == "push" -> "✓ פעיל כעת: push (גוגל)"
+            available -> "פעיל כעת: בדיקה ידנית (push זמין — ניתן לעבור)"
+            else -> "פעיל כעת: בדיקה ידנית (push לא זמין במכשיר זה)"
         }
     }
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- גרסת בדיקה בלבד: מאפשרת HTTP לא-מוצפן כדי לפנות לשרת mock על המחשב.
+         הגרסה האמיתית (release) נשארת HTTPS בלבד. -->
+    <application
+        android:usesCleartextTraffic="true"
+        tools:replace="android:usesCleartextTraffic" />
+</manifest>

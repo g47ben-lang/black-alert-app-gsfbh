@@ -4,53 +4,67 @@
 התראה — קופץ **חלון מסך-מלא שמצלצל ומדליק את המסך גם כשהוא נעול**, ומציע **ניווט למיקום**
 דרך אפליקציות הניווט המותקנות במכשיר (Waze / גוגל מפות / כל אפליקציה התומכת ב-`geo:`).
 
-נבנתה מהבנת הלוגיקה של תוסף הדפדפן הרשמי, עם התאמות לנייד.
+עיצוב תואם לתוסף הדפדפן הרשמי (כהה + צהוב, אותו לוגו וסמלילים), עם התאמות לנייד.
 
 ## יכולות
 
-- 🔴 **חלון התראה מלא שמצלצל** — מוצג מעל המסך הנעול, צליל לולאתי + רטט, עם עצירה אוטומטית.
-- 🧭 **ניווט בלחיצה** — בורר אפליקציות הניווט של המערכת, עם מיקום מדויק (`lat/lng`) מהאירוע.
-- 📡 **רקע אמין** — שירות Foreground עם polling (כל ~10ש', jitter + backoff + watchdog),
-  שורד הריגת מערכת ומופעל מחדש אחרי אתחול/עדכון. ללא תלות ב-Google Play Services / FCM.
-- 🔎 **סינון** לפי ערים/אזורים, סוגי אירוע, שעות שקטות, ומצב "התראה לפי קרבה" (GPS).
-- 📜 **היסטוריה מקומית** — תיעוד append-only של **כל גרסה** של אירוע (כולל עריכות וסגירות
-  שהשרת דורס), עם מסך שמציג את שרשרת העריכות.
+- 🔴 **חלון התראה מלא שמצלצל** — מעל המסך הנעול, צליל לולאתי + רטט, עם מפת OSM של הנקודה.
+- 🧭 **ניווט בלחיצה** — בורר אפליקציות הניווט של המערכת, עם מיקום מדויק (`lat/lng`).
+- 📡 **מסירה עם failover** — מכשירים עם Google Play Services מקבלים **push (FCM)**; מכשירים
+  ללא (מנוהלים/כשרים) ממשיכים ב-**בדיקה תקופתית** עם טיימר מההגדרות. גם במצב push יש
+  **safety-poll** למניעת כשל.
+- 🔋 **חיסכון בסוללה** — תדירות בדיקה אדפטיבית (מסך דולק מהיר / מסך כבוי איטי), הכל מתצורה.
+- 🔎 **סינון** לפי ערים/אזורים, סוגי אירוע, שעות שקטות, ומצב "קרבה" (GPS).
+- 📜 **היסטוריה** — log מקומי append-only ששומר **כל גרסה ערוכה** (כולל סגירות שהשרת דורס),
+  עם מסך שמציג גם את **היסטוריית השרת** (`/alerts-history`).
 - 🎯 **מקור נתונים מתצורה** — לעקיפת סינון תוכן במכשירים מנוהלים (הפניה ל-proxy/Cloud Function).
+- ⬆️ **בדיקת עדכונים** — מתריע אוטומטית כשיש גרסה חדשה ב-GitHub Releases.
 
 ## ארכיטקטורה
 
 ```
-PollingService (Foreground)
-   └─ BlackAlertApi  ──GET──▶  black-alert.com/notifications   (פיד ציבורי, ללא אימות)
-   └─ AlertProcessor ── dedup(notificationId:version) · סינון · TTL · closed
-        ├─▶ NotificationHelper ─ full-screen intent + צליל ─▶ AlertActivity (צלצול + ניווט)
-        └─▶ HistoryStore (JSONL append-only — שומר עריכות)
+מכשיר תומך (Play):   FCM relay (server/) ──push──▶ FcmService ─┐
+מכשיר לא-תומך:       PollingService ──GET /notifications───────┤
+                                                               ▼
+                            AlertProcessor (dedup·סינון·TTL·closed)
+                              ├─▶ NotificationHelper → AlertActivity (צלצול+מפה+ניווט)
+                              └─▶ HistoryStore (JSONL — שומר עריכות)
 ```
 
-מקור הנתונים מתבסס על הפיד הציבורי הקיים בלבד (`/notifications`, `/alerts-history`,
-`/lists-versions`, `/static/cities.json`). אין שימוש בנקודות קצה מאומתות.
+מבוסס על הפיד הציבורי בלבד (`/notifications`, `/alerts-history`, `/lists-versions`,
+`/static/cities.json`). אין שימוש בנקודות קצה מאומתות.
 
-## בנייה
+## בנייה והתקנה
 
 ```bash
-./gradlew assembleDebug      # APK לבדיקה
-./gradlew assembleRelease    # release (לא חתום — ראה Releases ל-APK חתום)
+./gradlew assembleRelease    # גרסת הפצה (חתום ב-Releases)
+./gradlew assembleDebug      # גרסת בדיקה (com.black.alert.test, מותקנת במקביל)
 ```
+דרישות: JDK 17, Android SDK (platform 34, build-tools 34+). הורד APK חתום מ-[Releases](../../releases).
 
-דרישות: JDK 17, Android SDK (platform 34, build-tools 34+).
+## גרסת בדיקה — שליחת התראות מהמחשב
 
-## התקנה
+גרסת ה-`debug` (`צבע שחור (בדיקה)`) מותקנת **במקביל** לאמיתית ומאפשרת HTTP לשרת mock:
 
-הורד את ה-APK החתום מ-[Releases](../../releases), ואז:
 ```bash
-adb install black-alert-vX.Y.Z.apk
+cd tools && python3 mock_server.py        # מאזין על 0.0.0.0:8000
 ```
-מומלץ לאשר את הרשאת ההתראות ולבטל אופטימיזציית סוללה (כפתור באפליקציה) לאמינות רקע.
+1. באפליקציית הבדיקה: הגדרות → **מתקדם — מקור נתונים** → `http://<IP-של-המחשב>:8000`
+2. פתח בדפדפן `http://localhost:8000/` ולחץ **"שלח התראת בדיקה"** — האפליקציה תצלצל.
+
+## Push (אופציונלי)
+
+לפעלת push: צור פרויקט Firebase, מלא את `app/src/main/res/values/firebase_config.xml`,
+ופרוס את ה-relay מ-`server/` (`firebase deploy --only functions`). ללא הגדרה — האפליקציה
+עובדת ב-polling בלבד.
+
+## קרדיטים
+
+- מערכת ההתראות **"צבע שחור"**
+- יוצר שרת ההתראות — **[dudua99](https://mitmachim.top/user/dudua99)**
+- פיתוח האפליקציה — **[613avi](https://github.com/613avi)**
+- ולכלל התורמים לפרויקט 🙏
 
 ## רישיון
 
-MIT — ראה [LICENSE](LICENSE).
-
-## כתב ויתור
-
-פרויקט קהילתי עצמאי הצורך פיד ציבורי. אינו מסונף רשמית למפעילי "צבע שחור".
+MIT — ראה [LICENSE](LICENSE). פרויקט קהילתי עצמאי; אינו מסונף רשמית למפעילי "צבע שחור".

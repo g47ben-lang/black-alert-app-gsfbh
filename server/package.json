@@ -1,0 +1,11 @@
+{
+  "name": "black-alert-relay",
+  "description": "FCM relay — polls black-alert.com and pushes to the 'alerts' topic",
+  "engines": { "node": "20" },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.3.0",
+    "firebase-functions": "^5.0.0"
+  },
+  "private": true
+}

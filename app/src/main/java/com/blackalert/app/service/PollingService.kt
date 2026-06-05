@@ -33,6 +33,13 @@ class PollingService : Service() {
     private var connected = true
     private var lastListsCheck = 0L
 
+    @Volatile private var screenOn = true
+    private val screenReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context?, i: Intent?) {
+            screenOn = i?.action != Intent.ACTION_SCREEN_OFF
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
@@ -40,6 +47,14 @@ class PollingService : Service() {
         processor = AlertProcessor(this)
         notifications = NotificationHelper(this)
         lastOkTime = System.currentTimeMillis()
+        // הפעלת push אם זמין (failover); הרשמה למצב מסך לחיסכון סוללה
+        PushManager.applyDelivery(this)
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        screenOn = pm.isInteractive
+        registerReceiver(screenReceiver, android.content.IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+        })
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -58,13 +73,24 @@ class PollingService : Service() {
         while (currentCoroutineContext().isActive) {
             val ok = runOnce()
             updateForegroundConnectivity()
-            val base = if (pollFailures > 0)
-                min(POLL_INTERVAL_MS * 2.0.pow(pollFailures - 1).toLong(), 60_000L)
-            else POLL_INTERVAL_MS
-            val delayMs = (base * (0.85 + Random.nextDouble() * 0.30)).toLong()
+            val pushMode = PushManager.effectiveMode(this) == "push"
+            val delayMs: Long = if (pushMode) {
+                // push פעיל — בדיקה רק כ-safety-net (מניעת כשל). 0 = כבוי → מרווח ארוך מאוד.
+                val m = prefs.safetyPollMinutes
+                val baseMs = if (m <= 0) 6L * 60 * 60 * 1000 else m * 60_000L
+                (baseMs * (0.85 + Random.nextDouble() * 0.30)).toLong()
+            } else {
+                // polling ידני: מסך דולק → מהיר; מסך כבוי → ארוך (חיסכון). backoff מעריכי בכשל.
+                val baseMs = (if (screenOn) prefs.pollOnSec else prefs.pollOffSec) * 1000L
+                val base = if (pollFailures > 0)
+                    min(baseMs * 2.0.pow(pollFailures - 1).toLong(), 60_000L)
+                else baseMs
+                (base * (0.85 + Random.nextDouble() * 0.30)).toLong()
+            }
             delay(delayMs)
             if (System.currentTimeMillis() - lastListsCheck > LISTS_CHECK_MS) {
                 runCatching { checkLists(force = false) }
+                runCatching { maybeNotifyUpdate() }
             }
         }
     }
@@ -108,9 +134,17 @@ class PollingService : Service() {
         notifications.updateForeground(connected)
     }
 
+    /** בדיקת עדכון יומית (ברקע) → התראה אם קיימת גרסה חדשה שלא נדחתה. */
+    private fun maybeNotifyUpdate() {
+        val u = com.blackalert.app.net.UpdateChecker.checkForUpdate() ?: return
+        if (u.tag == prefs.dismissedUpdateTag) return
+        notifications.showUpdate(u.tag, u.pageUrl)
+    }
+
     override fun onDestroy() {
         loopJob?.cancel()
         scope.cancel()
+        runCatching { unregisterReceiver(screenReceiver) }
         wakeLock?.let { if (it.isHeld) it.release() }
         // ניסיון החייאה: אם המשתמש לא כיבה ידנית — בקש מהמערכת להפעיל מחדש
         if (Prefs(this).serviceEnabled) {

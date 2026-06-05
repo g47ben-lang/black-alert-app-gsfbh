@@ -11,8 +11,8 @@ android {
         applicationId = "com.black.alert"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     buildTypes {
@@ -22,6 +22,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            // גרסת בדיקה — מותקנת במקביל לאמיתית (applicationId נפרד), מאפשרת שרת mock ב-HTTP.
+            // שם האפליקציה והרשאת cleartext נדרסים ב-src/debug/.
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
         }
     }
     compileOptions {
@@ -33,6 +39,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 
@@ -44,4 +51,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-service:2.8.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+
+    // Failover push: FCM למכשירים עם Google Play Services. מאותחל ידנית (ללא google-services
+    // plugin) כך שהבנייה והאפליקציה עובדות גם בלי הגדרת Firebase ובלי Play Services.
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.android.gms:play-services-base:18.5.0")
 }

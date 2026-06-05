@@ -10,6 +10,8 @@ class App : Application() {
         val prefs = Prefs(this)
         // מקור הנתונים (ישיר / proxy לעקיפת סינון) — נטען לפני הפעלת השירות
         com.blackalert.app.net.BlackAlertApi.base = prefs.sourceBaseUrl
+        // failover: הפעלת push אם המכשיר תומך (Play Services + Firebase מוגדר)
+        com.blackalert.app.service.PushManager.applyDelivery(this)
         // הפעלת השירות בעליית האפליקציה אם המשתמש לא כיבה אותו ידנית
         if (prefs.serviceEnabled) {
             PollingService.start(this)

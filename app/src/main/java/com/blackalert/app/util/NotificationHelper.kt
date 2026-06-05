@@ -125,6 +125,34 @@ class NotificationHelper(private val context: Context) {
         nm.cancel(event.notificationId.hashCode() and 0x7fffffff)
     }
 
+    /** התראת עדכון זמין — לחיצה פותחת את דף ה-Release בגיטהאב. */
+    fun showUpdate(tag: String, pageUrl: String) {
+        ensureUpdateChannel()
+        val pi = PendingIntent.getActivity(
+            context, 9001,
+            Intent(Intent.ACTION_VIEW, android.net.Uri.parse(pageUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val n = NotificationCompat.Builder(context, CH_UPDATE)
+            .setSmallIcon(R.drawable.ic_alert)
+            .setContentTitle("עדכון זמין — $tag")
+            .setContentText("גרסה חדשה של צבע שחור זמינה להורדה. הקש לעדכון.")
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+        nm.notify(9001, n)
+    }
+
+    private fun ensureUpdateChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        if (nm.getNotificationChannel(CH_UPDATE) == null) {
+            nm.createNotificationChannel(
+                NotificationChannel(CH_UPDATE, "עדכונים", NotificationManager.IMPORTANCE_DEFAULT)
+            )
+        }
+    }
+
     private fun eventTypeTitle(type: Int): String = when (type) {
         0 -> context.getString(R.string.event_type_0)
         2 -> context.getString(R.string.event_type_2)
@@ -184,6 +212,7 @@ class NotificationHelper(private val context: Context) {
         const val CH_FOREGROUND = "foreground_status"
         const val CH_ALERT_SOUND = "alert_sound"
         const val CH_ALERT_SILENT = "alert_silent"
+        const val CH_UPDATE = "updates"
         const val FOREGROUND_ID = 1001
     }
 }

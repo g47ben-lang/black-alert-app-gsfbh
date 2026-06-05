@@ -2,91 +2,180 @@ package com.blackalert.app.ui
 
 import android.os.Bundle
 import android.text.format.DateUtils
+import android.view.Gravity
 import android.view.View
+import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.NestedScrollView
+import com.blackalert.app.data.AlertEvent
 import com.blackalert.app.data.CitiesRepository
 import com.blackalert.app.data.EventHistory
 import com.blackalert.app.data.HistoryStore
+import com.blackalert.app.net.BlackAlertApi
+import kotlin.concurrent.thread
 
 /**
- * מסך היסטוריה מקומית — מציג אירועים מקובצים, וכשאירוע נערך בשרת מציג את *שרשרת הגרסאות*
- * (כל עריכה שנשמרה מקומית), כך שעריכות שהשרת דרס עדיין נראות.
+ * היסטוריה — מתג בין "מקומי" (log append-only ששומר עריכות) ל-"שרת" (/alerts-history).
+ * המקומי שומר את שרשרת העריכות; השרת מציג את המצב הסופי בלבד.
  */
 class HistoryActivity : AppCompatActivity() {
 
+    private val bg = 0xFF121216.toInt()
+    private val surface = 0xFF23242C.toInt()
+    private val onSurface = 0xFFE7E7EC.toInt()
+    private val onVar = 0xFFA8AAB5.toInt()
+    private val primary = 0xFFFFD500.toInt()
+
+    private lateinit var container: LinearLayout
+    private lateinit var repo: CitiesRepository
+    private var serverLoaded = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        supportActionBar?.title = "היסטוריית התראות (מקומית)"
+        supportActionBar?.title = "היסטוריית התראות"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-
-        val repo = CitiesRepository.get(this)
-        val groups = HistoryStore(this).groupedByEvent()
+        repo = CitiesRepository.get(this)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(28, 20, 28, 40)
+            setBackgroundColor(bg)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
 
-        if (groups.isEmpty()) {
-            root.addView(TextView(this).apply {
-                text = "אין עדיין היסטוריה מקומית.\nהתיעוד מתחיל אוטומטית כשמגיעות התראות (אם האפשרות מופעלת בהגדרות)."
-                setPadding(0, 40, 0, 0)
-            })
+        // מתג מקומי/שרת
+        val tabs = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(24, 20, 24, 8)
         }
+        val btnLocal = tabButton("מקומי (כולל עריכות)")
+        val btnServer = tabButton("שרת")
+        tabs.addView(btnLocal); tabs.addView(btnServer)
+        root.addView(tabs)
 
-        groups.forEach { g -> root.addView(buildCard(g, repo)) }
+        container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24, 8, 24, 40)
+        }
+        root.addView(NestedScrollView(this).apply {
+            addView(container)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT)
+        })
 
-        setContentView(NestedScrollView(this).apply { addView(root) })
+        btnLocal.setOnClickListener { selectTab(btnLocal, btnServer); showLocal() }
+        btnServer.setOnClickListener { selectTab(btnServer, btnLocal); showServer() }
+
+        selectTab(btnLocal, btnServer)
+        showLocal()
+        setContentView(root)
     }
 
-    private fun buildCard(g: EventHistory, repo: CitiesRepository): View {
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(28, 24, 28, 24)
-            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-            lp.setMargins(0, 0, 0, 24); layoutParams = lp
-            setBackgroundColor(0xFFF3F3F3.toInt())
-        }
-        val latest = g.latest
-        val cityNames = latest.cities.joinToString(", ") { repo.cityByKey(it)?.he ?: it }
-        val type = when (latest.eventType) {
-            0 -> "נסיון מעצר מ.צ."; 2 -> "התרעת מחסומים"; 3 -> "נסיון הסגרה"; else -> "התראה"
-        }
+    private fun tabButton(label: String) = Button(this).apply {
+        text = label; isAllCaps = false
+        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+    }
 
-        card.addView(TextView(this).apply {
-            text = "$type — $cityNames"; textSize = 17f
-            setTextColor(0xFFB71C1C.toInt())
-        })
-        card.addView(TextView(this).apply {
-            val rel = DateUtils.getRelativeTimeSpanString(latest.time * 1000)
-            text = rel.toString() + (if (latest.address.isNotBlank()) "  ·  📍 ${latest.address}" else "")
-            setPadding(0, 6, 0, 6)
-        })
+    private fun selectTab(active: Button, other: Button) {
+        active.setBackgroundColor(primary); active.setTextColor(0xFF1F1C00.toInt())
+        other.setBackgroundColor(surface); other.setTextColor(onSurface)
+    }
 
+    // --- מקומי ---
+    private fun showLocal() {
+        container.removeAllViews()
+        val groups = HistoryStore(this).groupedByEvent()
+        if (groups.isEmpty()) {
+            container.addView(emptyText("אין עדיין היסטוריה מקומית.\nהתיעוד מתחיל אוטומטית כשמגיעות התראות (אם מופעל בהגדרות)."))
+            return
+        }
+        groups.forEach { container.addView(localCard(it)) }
+    }
+
+    // --- שרת ---
+    private fun showServer() {
+        container.removeAllViews()
+        val spinner = ProgressBar(this).apply {
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            lp.gravity = Gravity.CENTER_HORIZONTAL; lp.topMargin = 60; layoutParams = lp
+            indeterminateTintList = android.content.res.ColorStateList.valueOf(primary)
+        }
+        container.addView(spinner)
+        thread {
+            val result = runCatching { BlackAlertApi.fetchHistory() }
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                container.removeAllViews()
+                result.onSuccess { events ->
+                    serverLoaded = true
+                    if (events.isEmpty()) { container.addView(emptyText("אין היסטוריה מהשרת.")); return@onSuccess }
+                    events.sortedByDescending { it.time }.take(150).forEach { container.addView(serverCard(it)) }
+                }.onFailure {
+                    container.addView(emptyText("שגיאה בטעינת היסטוריית השרת — בדוק חיבור.\n(${it.message ?: "שגיאה"})"))
+                }
+            }
+        }
+    }
+
+    private fun emptyText(msg: String) = TextView(this).apply {
+        text = msg; setTextColor(onVar); setPadding(8, 50, 8, 0); textSize = 15f
+    }
+
+    private fun card(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(28, 22, 28, 22)
+        val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        lp.setMargins(0, 0, 0, 20); layoutParams = lp
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(surface); cornerRadius = 32f
+        }
+    }
+
+    private fun typeLabel(t: Int) = when (t) {
+        0 -> "נסיון מעצר מ.צ."; 2 -> "התרעת מחסומים"; 3 -> "נסיון הסגרה"; else -> "התראה"
+    }
+
+    private fun typeColor(t: Int) = when (t) { 3 -> 0xFFFF8000.toInt(); 0, 2 -> primary; else -> 0xFFC9CBD6.toInt() }
+
+    private fun header(c: LinearLayout, ev: AlertEvent) {
+        val cityNames = ev.cities.joinToString(", ") { repo.cityByKey(it)?.he ?: it }
+        c.addView(TextView(this).apply {
+            text = "${typeLabel(ev.eventType)} — $cityNames"; textSize = 17f
+            setTextColor(typeColor(ev.eventType)); setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        c.addView(TextView(this).apply {
+            text = DateUtils.getRelativeTimeSpanString(ev.time * 1000).toString() +
+                (if (ev.address.isNotBlank()) "  ·  📍 ${ev.address}" else "")
+            setTextColor(onVar); setPadding(0, 6, 0, 4); textSize = 13f
+        })
+    }
+
+    private fun localCard(g: EventHistory): View {
+        val c = card(); header(c, g.latest)
         val badges = buildString {
             if (g.wasEdited) append("✏ נערך ${g.versions.size} פעמים   ")
             if (g.wasClosed) append("✓ הסתיים")
         }
-        if (badges.isNotBlank()) card.addView(TextView(this).apply {
-            text = badges; setTextColor(0xFF555555.toInt()); textSize = 13f
-        })
-
-        // שרשרת הגרסאות (העריכות) — מה שהשרת עלול לדרוס
-        if (g.wasEdited || g.versions.any { it.note.isNotBlank() }) {
-            g.versions.forEach { v ->
-                if (v.note.isBlank() && !v.isClosed) return@forEach
-                card.addView(TextView(this).apply {
-                    val tag = if (v.isClosed) "[סגירה]" else "v${v.version}"
-                    text = "• $tag: ${v.note.ifBlank { "(ללא טקסט)" }}"
-                    setPadding(16, 8, 0, 0); textSize = 14f
-                    setTextColor(0xFF333333.toInt())
-                })
-            }
+        if (badges.isNotBlank()) c.addView(TextView(this).apply { text = badges; setTextColor(onVar); textSize = 12f })
+        g.versions.forEach { v ->
+            if (v.note.isBlank() && !v.isClosed) return@forEach
+            c.addView(TextView(this).apply {
+                val tag = if (v.isClosed) "[סגירה]" else "v${v.version}"
+                text = "• $tag: ${v.note.ifBlank { "(ללא טקסט)" }}"
+                setPadding(16, 8, 0, 0); textSize = 14f; setTextColor(onSurface)
+            })
         }
-        return card
+        return c
+    }
+
+    private fun serverCard(ev: AlertEvent): View {
+        val c = card(); header(c, ev)
+        if (ev.note.isNotBlank()) c.addView(TextView(this).apply {
+            text = ev.note; setPadding(0, 6, 0, 0); textSize = 14f; setTextColor(onSurface)
+            setLineSpacing(0f, 1.3f)
+        })
+        return c
     }
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }

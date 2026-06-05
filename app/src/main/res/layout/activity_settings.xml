@@ -108,6 +108,69 @@
                 android:text="@string/set_save" />
         </LinearLayout>
 
+        <TextView style="@style/SectionHeader" android:text="מסירה ותדירות (סוללה)" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="אופן קבלת התראות: אוטומטי בוחר push (גוגל) אם זמין, אחרת בדיקה תקופתית."
+            android:textSize="13sp"
+            android:textColor="#FF777777" />
+
+        <Spinner
+            android:id="@+id/deliverySpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" />
+
+        <TextView
+            android:id="@+id/deliveryStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="13sp"
+            android:textColor="@color/on_surface_var" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="10dp">
+
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="בדיקה — מסך דולק (שנ')" />
+            <EditText android:id="@+id/pollOn" android:layout_width="70dp" android:layout_height="wrap_content" android:inputType="number" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="6dp">
+
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="בדיקה — מסך כבוי (שנ')" />
+            <EditText android:id="@+id/pollOff" android:layout_width="70dp" android:layout_height="wrap_content" android:inputType="number" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="6dp">
+
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="גיבוי במצב push (דק', 0=כבוי)" />
+            <EditText android:id="@+id/safetyPoll" android:layout_width="70dp" android:layout_height="wrap_content" android:inputType="number" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnSaveDelivery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/set_save" />
+
         <TextView style="@style/SectionHeader" android:text="מתקדם — מקור נתונים" />
 
         <TextView
