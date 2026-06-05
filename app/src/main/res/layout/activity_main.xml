@@ -80,10 +80,23 @@
             android:visibility="gone" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReport"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:layout_marginTop="28dp"
+            android:backgroundTint="#FFD32F2F"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:text="🚨 דיווח על מעצר"
+            app:icon="@android:drawable/ic_menu_call"
+            app:iconTint="@color/white" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnTest"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="16dp"
             android:backgroundTint="@color/primary"
             android:textColor="@color/on_primary"
             android:text="@string/main_test" />

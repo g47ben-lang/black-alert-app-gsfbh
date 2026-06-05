@@ -151,8 +151,35 @@ class HistoryActivity : AppCompatActivity() {
         })
     }
 
+    /** פותח את מסך הפרטים המלא (תצוגה בלבד — בלי צלצול) עם מפה וניווט. */
+    private fun openDetail(ev: AlertEvent) {
+        val cityNames = ev.cities.joinToString(", ") { repo.cityByKey(it)?.he ?: it }
+        val title = typeLabel(ev.eventType)
+        // מיקום: מהאירוע, אחרת מרכז-העיר הראשונה
+        var lat = ev.lat; var lng = ev.lng
+        if (lat == null || lng == null) {
+            ev.cities.firstNotNullOfOrNull { repo.cityByKey(it) }?.let { lat = it.lat; lng = it.lng }
+        }
+        val i = android.content.Intent(this, AlertActivity::class.java).apply {
+            putExtra(AlertActivity.EXTRA_VIEW_ONLY, true)
+            putExtra(AlertActivity.EXTRA_WITH_SOUND, false)
+            putExtra(AlertActivity.EXTRA_TITLE, title)
+            putExtra(AlertActivity.EXTRA_CITIES, cityNames)
+            putExtra(AlertActivity.EXTRA_ADDRESS, ev.address)
+            putExtra(AlertActivity.EXTRA_NOTE, ev.note)
+            putExtra(AlertActivity.EXTRA_EVENT_TYPE, ev.eventType)
+            if (lat != null && lng != null && (lat != 0.0 || lng != 0.0)) {
+                putExtra(AlertActivity.EXTRA_LAT, lat!!)
+                putExtra(AlertActivity.EXTRA_LNG, lng!!)
+                putExtra(AlertActivity.EXTRA_LABEL, if (ev.address.isNotBlank()) "$cityNames, ${ev.address}" else cityNames)
+            }
+        }
+        startActivity(i)
+    }
+
     private fun localCard(g: EventHistory): View {
         val c = card(); header(c, g.latest)
+        c.setOnClickListener { openDetail(g.latest) }
         val badges = buildString {
             if (g.wasEdited) append("✏ נערך ${g.versions.size} פעמים   ")
             if (g.wasClosed) append("✓ הסתיים")
@@ -171,6 +198,7 @@ class HistoryActivity : AppCompatActivity() {
 
     private fun serverCard(ev: AlertEvent): View {
         val c = card(); header(c, ev)
+        c.setOnClickListener { openDetail(ev) }
         if (ev.note.isNotBlank()) c.addView(TextView(this).apply {
             text = ev.note; setPadding(0, 6, 0, 0); textSize = 14f; setTextColor(onSurface)
             setLineSpacing(0f, 1.3f)

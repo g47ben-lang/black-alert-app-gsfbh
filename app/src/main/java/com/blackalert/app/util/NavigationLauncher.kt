@@ -1,5 +1,6 @@
 package com.blackalert.app.util
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import com.blackalert.app.service.NavTarget
@@ -10,6 +11,20 @@ import com.blackalert.app.service.NavTarget
  * ללא תלות ב-Google Play Services.
  */
 object NavigationLauncher {
+
+    /**
+     * ניווט ליעד — **Waze כברירת מחדל**. אם Waze לא מותקן, נפילה לבורר המערכת (geo:).
+     * זו נקודת הכניסה היחידה שהאפליקציה משתמשת בה.
+     */
+    fun launch(context: Context, target: NavTarget) {
+        try {
+            context.startActivity(buildWaze(target))
+        } catch (_: Exception) {
+            try {
+                context.startActivity(buildChooser(target))
+            } catch (_: Exception) { }
+        }
+    }
 
     /** Intent ניווט לבורר המערכת. geo:lat,lng?q=lat,lng(label) — נתמך ע"י כל אפליקציות הניווט. */
     fun buildChooser(target: NavTarget): Intent {

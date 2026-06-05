@@ -33,15 +33,39 @@ class CitiesSelectActivity : AppCompatActivity() {
         root.addView(TextView(this).apply {
             text = "אזורים"; textSize = 18f; setPadding(0, 8, 0, 8)
         })
+
+        val areaBoxes = mutableListOf<Pair<Int, CheckBox>>()
+        // שורת "סמן הכל / נקה" לאזורים
+        root.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(android.widget.Button(this@CitiesSelectActivity).apply {
+                text = "סמן את כל האזורים"; isAllCaps = false
+                setOnClickListener {
+                    selectedAreas.clear(); selectedAreas.addAll(repo.allAreasSorted().map { it.id })
+                    prefs.selectedAreaIds = selectedAreas
+                    areaBoxes.forEach { it.second.isChecked = true }
+                }
+            })
+            addView(android.widget.Button(this@CitiesSelectActivity).apply {
+                text = "נקה"; isAllCaps = false
+                setOnClickListener {
+                    selectedAreas.clear(); prefs.selectedAreaIds = selectedAreas
+                    areaBoxes.forEach { it.second.isChecked = false }
+                }
+            })
+        })
+
         repo.allAreasSorted().forEach { area ->
-            root.addView(CheckBox(this).apply {
+            val cb = CheckBox(this).apply {
                 text = area.he
                 isChecked = selectedAreas.contains(area.id)
                 setOnCheckedChangeListener { _, c ->
                     if (c) selectedAreas.add(area.id) else selectedAreas.remove(area.id)
                     prefs.selectedAreaIds = selectedAreas
                 }
-            })
+            }
+            areaBoxes.add(area.id to cb)
+            root.addView(cb)
         }
 
         root.addView(TextView(this).apply {

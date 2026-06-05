@@ -44,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnTest.setOnClickListener { fireTestAlert() }
         binding.btnBattery.setOnClickListener { requestIgnoreBatteryOptimizations() }
         binding.btnAbout.setOnClickListener { showAbout() }
+        binding.btnReport.setOnClickListener { confirmReportArrest() }
 
         requestNotificationPermission()
     }
@@ -114,6 +115,19 @@ class MainActivity : AppCompatActivity() {
             test, withSound = true,
             target = NavTarget(32.0874, 34.8324, "בני ברק, רחוב רבי עקיבא"), prefs = prefs
         )
+    }
+
+    private fun confirmReportArrest() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("🚨 דיווח על מעצר")
+            .setMessage(
+                "פעולה זו תחייג ישירות למוקד \"צבע שחור\" ותעביר אותך לשלוחת הדיווח על מעצר.\n\n" +
+                "מספר: ${com.blackalert.app.util.ReportArrest.NUMBER} · שלוחה ${com.blackalert.app.util.ReportArrest.EXTENSION}\n" +
+                "השלוחה תישלח אוטומטית לאחר המענה.\n\nלחייג עכשיו?"
+            )
+            .setPositiveButton("📞 חייג למוקד") { _, _ -> com.blackalert.app.util.ReportArrest.call(this) }
+            .setNegativeButton("ביטול", null)
+            .show()
     }
 
     private fun showAbout() {

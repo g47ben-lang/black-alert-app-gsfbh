@@ -16,9 +16,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
         if (lat.isNaN() || lng.isNaN()) return
         val label = intent.getStringExtra(EXTRA_LABEL) ?: ""
 
-        // סגירת מגירת ההתראות לפני פתיחת הבורר
+        // סגירת מגירת ההתראות לפני פתיחת הניווט
         context.sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
-        context.startActivity(NavigationLauncher.buildChooser(NavTarget(lat, lng, label)))
+        NavigationLauncher.launch(context, NavTarget(lat, lng, label))
 
         val notifId = intent.getIntExtra(EXTRA_NOTIF_ID, -1)
         if (notifId != -1) {

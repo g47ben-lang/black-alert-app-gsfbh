@@ -69,8 +69,9 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def log_message(self, *a):  # שקט
-        pass
+    def log_message(self, fmt, *a):
+        import sys
+        sys.stderr.write("REQ %s - %s\n" % (self.address_string(), fmt % a))
 
     def do_GET(self):
         u = urlparse(self.path)

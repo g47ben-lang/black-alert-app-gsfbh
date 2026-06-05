@@ -12,6 +12,15 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!-- Optional: only used for "alert by proximity" mode -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Optional: "דיווח על מעצר" — חיוג ישיר למוקד (אחרת נופל ל-dialer מוכן) -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+    </queries>
 
     <!-- Let the system chooser resolve geo: / waze navigation targets on Android 11+ -->
     <queries>

@@ -48,7 +48,8 @@ class AlertActivity : AppCompatActivity() {
         val address = intent.getStringExtra(EXTRA_ADDRESS) ?: ""
         val note = intent.getStringExtra(EXTRA_NOTE) ?: ""
         val eventType = intent.getIntExtra(EXTRA_EVENT_TYPE, 8)
-        val withSound = intent.getBooleanExtra(EXTRA_WITH_SOUND, true)
+        val viewOnly = intent.getBooleanExtra(EXTRA_VIEW_ONLY, false)
+        val withSound = intent.getBooleanExtra(EXTRA_WITH_SOUND, true) && !viewOnly
 
         binding.alertTitle.text = title
         binding.alertTitle.setTextColor(colorForEventType(eventType))
@@ -72,7 +73,7 @@ class AlertActivity : AppCompatActivity() {
         binding.btnNavigate.alpha = if (target != null) 1f else 0.4f
         binding.btnNavigate.setOnClickListener {
             target?.let {
-                startActivity(NavigationLauncher.buildChooser(it))
+                NavigationLauncher.launch(this, it)   // Waze כברירת מחדל, נפילה ל-geo:
                 stopRinging(); finish()
             }
         }
@@ -87,16 +88,34 @@ class AlertActivity : AppCompatActivity() {
         else -> 0xFFC9CBD6.toInt()     // כללי
     }
 
+    /**
+     * יוצר את מפת ה-WebView ב-runtime בתוך mapContainer. עטוף ב-try/catch כי במכשירים
+     * מנוהלים/כשרים ייתכן שאין כלל WebView מותקן (MissingWebViewPackageException) — ואז
+     * מציגים נתוני מיקום במקום, בלי לקרוס.
+     */
     @android.annotation.SuppressLint("SetJavaScriptEnabled")
     private fun loadMap(target: NavTarget?, eventType: Int) {
         if (target == null) {
-            binding.mapView.visibility = android.view.View.GONE
+            binding.mapContainer.visibility = android.view.View.GONE
             return
         }
-        binding.mapView.settings.javaScriptEnabled = true
-        binding.mapView.setBackgroundColor(0xFF17181D.toInt())
-        val url = "file:///android_asset/alert_map.html?lat=${target.lat}&lng=${target.lng}&type=$eventType"
-        binding.mapView.loadUrl(url)
+        try {
+            val web = android.webkit.WebView(this)
+            web.settings.javaScriptEnabled = true
+            web.setBackgroundColor(0xFF17181D.toInt())
+            binding.mapContainer.addView(
+                web,
+                android.widget.FrameLayout.LayoutParams(
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                )
+            )
+            web.loadUrl("file:///android_asset/alert_map.html?lat=${target.lat}&lng=${target.lng}&type=$eventType")
+        } catch (t: Throwable) {
+            // אין WebView במכשיר — fallback לקואורדינטות + רמז לניווט
+            binding.mapFallback.visibility = android.view.View.VISIBLE
+            binding.mapFallback.text = "📍 ${target.label}\n${"%.5f".format(target.lat)}, ${"%.5f".format(target.lng)}\n\nהקש \"נווט\" לפתיחת המפה באפליקציית הניווט"
+        }
     }
 
     private fun showOverLockscreen() {
@@ -166,6 +185,7 @@ class AlertActivity : AppCompatActivity() {
         const val EXTRA_NOTE = "note"
         const val EXTRA_EVENT_TYPE = "eventType"
         const val EXTRA_WITH_SOUND = "withSound"
+        const val EXTRA_VIEW_ONLY = "viewOnly"
         const val EXTRA_LAT = "lat"
         const val EXTRA_LNG = "lng"
         const val EXTRA_LABEL = "label"
