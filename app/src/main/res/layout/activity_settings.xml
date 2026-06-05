@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layoutDirection="rtl">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView style="@style/SectionHeader" android:text="@string/set_filter" />
+
+        <Button
+            android:id="@+id/btnSelectCities"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/set_select_cities" />
+
+        <TextView style="@style/SectionHeader" android:text="@string/set_event_types" />
+
+        <LinearLayout
+            android:id="@+id/eventTypesContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchSilentNotSelected"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/set_silent_not_selected" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchProximity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/set_proximity" />
+
+        <TextView style="@style/SectionHeader" android:text="@string/set_sound" />
+
+        <Spinner
+            android:id="@+id/soundSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchVibrate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/set_vibrate" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchFullscreen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/set_fullscreen" />
+
+        <TextView style="@style/SectionHeader" android:text="היסטוריה" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchLocalHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/set_local_history" />
+
+        <TextView style="@style/SectionHeader" android:text="@string/set_quiet" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchQuiet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/set_quiet" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/set_quiet_from" />
+            <EditText
+                android:id="@+id/quietFrom"
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:inputType="time"
+                android:text="23:00" />
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/set_quiet_to" android:layout_marginStart="16dp" />
+            <EditText
+                android:id="@+id/quietTo"
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:inputType="time"
+                android:text="07:00" />
+
+            <Button
+                android:id="@+id/btnSaveQuiet"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="@string/set_save" />
+        </LinearLayout>
+
+        <TextView style="@style/SectionHeader" android:text="מתקדם — מקור נתונים" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="במכשיר מסונן (NetFree וכד') שחוסם פנייה ישירה — הפנה ל-proxy/Cloud Function שמשקף את אותו JSON (/notifications, /alerts-history, /lists-versions, /static/cities.json)."
+            android:textSize="13sp"
+            android:textColor="#FF777777" />
+
+        <EditText
+            android:id="@+id/sourceUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:hint="https://black-alert.com"
+            android:inputType="textUri"
+            android:textDirection="ltr" />
+
+        <Button
+            android:id="@+id/btnSaveSource"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/set_save" />
+
+    </LinearLayout>
+</ScrollView>

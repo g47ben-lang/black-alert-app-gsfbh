@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">צבע שחור</string>
+
+    <!-- foreground -->
+    <string name="fg_title">צבע שחור — מאזין להתראות</string>
+    <string name="fg_connected">מחובר · ממתין להתראות</string>
+    <string name="fg_disconnected">אין חיבור לשרת — מנסה להתחבר…</string>
+
+    <!-- channels -->
+    <string name="ch_foreground">סטטוס שירות</string>
+    <string name="ch_alert_sound">התראות (עם צליל)</string>
+    <string name="ch_alert_silent">התראות שקטות</string>
+
+    <!-- event types -->
+    <string name="event_type_0">נסיון מעצר מ.צ.</string>
+    <string name="event_type_2">התרעת מחסומים</string>
+    <string name="event_type_3">נסיון הסגרה</string>
+    <string name="event_type_8">התראה</string>
+
+    <!-- actions -->
+    <string name="action_navigate">נווט</string>
+    <string name="action_close">סגור</string>
+
+    <!-- main -->
+    <string name="main_service_switch">שירות ההתראות פעיל</string>
+    <string name="main_settings">הגדרות</string>
+    <string name="main_history">היסטוריה</string>
+    <string name="main_test">בדיקת התראה</string>
+    <string name="main_battery">בטל אופטימיזציית סוללה (מומלץ)</string>
+
+    <!-- settings -->
+    <string name="set_filter">סינון התראות</string>
+    <string name="set_select_cities">בחירת ערים ואזורים</string>
+    <string name="set_event_types">סוגי אירוע</string>
+    <string name="set_sound">צליל התראה</string>
+    <string name="set_vibrate">רטט</string>
+    <string name="set_fullscreen">חלון מסך-מלא (מדליק מסך גם נעול)</string>
+    <string name="set_silent_not_selected">הצג גם אזורים שלא נבחרו (ללא צליל)</string>
+    <string name="set_local_history">שמירת היסטוריה מקומית (כולל עריכות)</string>
+    <string name="set_proximity">התראה לפי קרבה (GPS)</string>
+    <string name="set_quiet">שעות שקטות</string>
+    <string name="set_quiet_from">מ־</string>
+    <string name="set_quiet_to">עד</string>
+    <string name="set_save">שמור</string>
+</resources>

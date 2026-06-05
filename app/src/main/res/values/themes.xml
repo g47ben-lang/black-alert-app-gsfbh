@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.BlackAlert" parent="Theme.Material3.DayNight">
+        <item name="colorPrimary">@color/alert_red</item>
+        <item name="colorPrimaryDark">@color/alert_red_dark</item>
+        <item name="colorSecondary">@color/accent</item>
+    </style>
+
+    <!-- מסך ההתראה — מסך מלא, רקע כהה -->
+    <style name="Theme.BlackAlert.Alert" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:statusBarColor">@color/alert_red_dark</item>
+        <item name="android:windowShowWallpaper">false</item>
+    </style>
+</resources>

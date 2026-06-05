@@ -1,0 +1,23 @@
+# Build
+/build/
+/app/build/
+.gradle/
+/captures/
+*.apk
+*.aab
+
+# Local config / secrets — NEVER commit
+local.properties
+keystore.properties
+*.jks
+*.keystore
+*.pem
+*.pk8
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# apksigner v4 side-file
+*.idsig
