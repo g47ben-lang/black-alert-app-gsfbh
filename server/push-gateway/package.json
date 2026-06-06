@@ -1,0 +1,13 @@
+{
+  "name": "black-alert-push-gateway",
+  "description": "Reads black-alert events and fans out to FCM + MQTT",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "engines": { "node": ">=20" },
+  "main": "index.js",
+  "scripts": { "start": "node index.js" },
+  "dependencies": {
+    "firebase-admin": "^12.3.0",
+    "mqtt": "^5.7.0"
+  }
+}

@@ -104,12 +104,24 @@ class AlertProcessor(context: Context) {
         return null
     }
 
-    /** true/false אם בתוך/מחוץ לרדיוס; null אם אי-אפשר לקבוע (אין מיקום). */
+    /**
+     * האם האירוע "קרוב" לפי הגדרת המשתמש: מרחק אווירי (ק"מ) או זמן נסיעה (דקות).
+     * מחזיר true/false, או null אם אי-אפשר לקבוע (אין מיקום) → המסנן לא חוסם (fail-open).
+     */
     private fun isWithinRadius(target: NavTarget?): Boolean? {
         if (target == null) return null
         val last = LocationProvider.lastKnown(appContext) ?: return null
         val results = FloatArray(1)
         Location.distanceBetween(last.first, last.second, target.lat, target.lng, results)
-        return results[0] / 1000.0 <= prefs.proximityRadiusKm
+        val airKm = results[0] / 1000.0
+
+        if (prefs.proximityMode == "time") {
+            // קדם-סינון אווירי כדי לא לבזבז ניתוב על אירוע רחוק בעליל (~80 קמ"ש מקס')
+            if (airKm > prefs.proximityTimeMin * 2.0) return false
+            val info = com.blackalert.app.util.TravelTime.compute(last.first, last.second, target.lat, target.lng)
+            if (info.driveMin < 0) return null // ניתוב נכשל → fail-open (עדיף להתריע מאשר לפספס)
+            return info.driveMin <= prefs.proximityTimeMin
+        }
+        return airKm <= prefs.proximityRadiusKm
     }
 }

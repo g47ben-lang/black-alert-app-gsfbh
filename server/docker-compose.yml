@@ -1,0 +1,21 @@
+# סביבת בדיקה/הרצה: broker MQTT + ה-Push Gateway.
+# הרצה:  cd server && cp push-gateway/.env.example push-gateway/.env && docker compose up
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"     # MQTT (לבדיקה; בענן השתמשו ב-TLS 8883)
+      - "9001:9001"     # WebSocket (אופציונלי)
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+
+  gateway:
+    build: ./push-gateway
+    env_file: ./push-gateway/.env
+    depends_on:
+      - mosquitto
+    # למפות service-account ל-FCM (אם בשימוש):
+    volumes:
+      - ./secrets:/secrets:ro
+    restart: unless-stopped

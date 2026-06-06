@@ -11,8 +11,8 @@ android {
         applicationId = "com.black.alert"
         minSdk = 24
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.3.0"
     }
 
     buildTypes {
@@ -57,4 +57,8 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.android.gms:play-services-base:18.5.0")
+
+    // MQTT — ערוץ push למכשירים ללא Google Play (חיבור מתמשך חסכוני בסוללה).
+    // לקוח Java טהור; מנוהל בתוך ה-Foreground Service שלנו (לא ה-Paho Android Service הישן).
+    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
 }

@@ -28,6 +28,10 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { /* רענון מצב */ refreshUi() }
 
+    private val locationPermLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* זמני הגעה/קרבה ישתמשו במיקום אם אושר */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
@@ -47,12 +51,114 @@ class MainActivity : AppCompatActivity() {
         binding.btnReport.setOnClickListener { confirmReportArrest() }
 
         requestNotificationPermission()
+        requestLocationPermission()
+
+        // הפעלה ראשונה אחרי התקנה → הפניה לבחירת אזורי התראה
+        if (!prefs.firstRunDone) {
+            prefs.firstRunDone = true
+            startActivity(Intent(this, CitiesSelectActivity::class.java))
+        }
+    }
+
+    private fun requestLocationPermission() {
+        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (!fine && !coarse) {
+            locationPermLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+        }
     }
 
     override fun onResume() {
         super.onResume()
         refreshUi()
         checkUpdateAsync()
+        loadRecentAlerts()
+    }
+
+    /** טוען התראות אחרונות מהשרת ומציג כרטיסים לחיצים במסך הראשי. */
+    private fun loadRecentAlerts() {
+        val container = binding.recentContainer
+        if (container.childCount == 0) {
+            container.addView(android.widget.TextView(this).apply {
+                text = "טוען…"; setTextColor(0xFFA8AAB5.toInt()); setPadding(8, 8, 8, 8)
+            })
+        }
+        kotlin.concurrent.thread {
+            val result = runCatching { com.blackalert.app.net.BlackAlertApi.fetchHistory() }
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                container.removeAllViews()
+                result.onSuccess { events ->
+                    val recent = events.sortedByDescending { it.time }.take(8)
+                    if (recent.isEmpty()) {
+                        container.addView(infoText("אין התראות אחרונות."))
+                    } else {
+                        val repo = com.blackalert.app.data.CitiesRepository.get(this)
+                        recent.forEach { container.addView(recentCard(it, repo)) }
+                    }
+                }.onFailure {
+                    container.addView(infoText("לא ניתן לטעון התראות מהשרת כרגע."))
+                }
+            }
+        }
+    }
+
+    private fun infoText(s: String) = android.widget.TextView(this).apply {
+        text = s; setTextColor(0xFFA8AAB5.toInt()); setPadding(8, 12, 8, 12); textSize = 14f
+    }
+
+    private fun recentCard(ev: com.blackalert.app.data.AlertEvent, repo: com.blackalert.app.data.CitiesRepository): android.view.View {
+        val card = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(24, 18, 24, 18)
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, 0, 0, 12) }
+            layoutParams = lp
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(0xFF23242C.toInt()); cornerRadius = 28f
+            }
+            isClickable = true
+            setOnClickListener { openDetail(ev, repo) }
+        }
+        val type = when (ev.eventType) { 0 -> "נסיון מעצר מ.צ."; 2 -> "התרעת מחסומים"; 3 -> "נסיון הסגרה"; else -> "התראה" }
+        val color = when (ev.eventType) { 3 -> 0xFFFF8000.toInt(); 0, 2 -> 0xFFFFD500.toInt(); else -> 0xFFC9CBD6.toInt() }
+        val cityNames = ev.cities.joinToString(", ") { repo.cityByKey(it)?.he ?: it }
+        card.addView(android.widget.TextView(this).apply {
+            text = "$type — $cityNames"; setTextColor(color); textSize = 16f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        card.addView(android.widget.TextView(this).apply {
+            text = android.text.format.DateUtils.getRelativeTimeSpanString(ev.time * 1000).toString() +
+                (if (ev.address.isNotBlank()) "  ·  📍 ${ev.address}" else "")
+            setTextColor(0xFFA8AAB5.toInt()); textSize = 12f; setPadding(0, 4, 0, 0)
+        })
+        return card
+    }
+
+    private fun openDetail(ev: com.blackalert.app.data.AlertEvent, repo: com.blackalert.app.data.CitiesRepository) {
+        val cityNames = ev.cities.joinToString(", ") { repo.cityByKey(it)?.he ?: it }
+        val title = when (ev.eventType) { 0 -> "נסיון מעצר מ.צ."; 2 -> "התרעת מחסומים"; 3 -> "נסיון הסגרה"; else -> "התראה" }
+        var lat = ev.lat; var lng = ev.lng
+        if (lat == null || lng == null) {
+            ev.cities.firstNotNullOfOrNull { repo.cityByKey(it) }?.let { lat = it.lat; lng = it.lng }
+        }
+        val i = Intent(this, AlertActivity::class.java).apply {
+            putExtra(AlertActivity.EXTRA_VIEW_ONLY, true)
+            putExtra(AlertActivity.EXTRA_WITH_SOUND, false)
+            putExtra(AlertActivity.EXTRA_TITLE, title)
+            putExtra(AlertActivity.EXTRA_CITIES, cityNames)
+            putExtra(AlertActivity.EXTRA_ADDRESS, ev.address)
+            putExtra(AlertActivity.EXTRA_NOTE, ev.note)
+            putExtra(AlertActivity.EXTRA_EVENT_TYPE, ev.eventType)
+            val la = lat; val ln = lng
+            if (la != null && ln != null && (la != 0.0 || ln != 0.0)) {
+                putExtra(AlertActivity.EXTRA_LAT, la); putExtra(AlertActivity.EXTRA_LNG, ln)
+                putExtra(AlertActivity.EXTRA_LABEL, if (ev.address.isNotBlank()) "$cityNames, ${ev.address}" else cityNames)
+            }
+        }
+        startActivity(i)
     }
 
     private fun checkUpdateAsync() {
@@ -86,9 +192,10 @@ class MainActivity : AppCompatActivity() {
         val notifOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         else true
-        binding.statusText.text = buildString {
-            append(if (prefs.serviceEnabled) "● השירות פעיל\n" else "○ השירות כבוי\n")
-            append(if (notifOk) "● הרשאת התראות: תקין" else "✗ חסרה הרשאת התראות")
+        binding.statusText.text = when {
+            !prefs.serviceEnabled -> "○ השירות כבוי"
+            !notifOk -> "✗ חסרה הרשאת התראות"
+            else -> "● מאזין להתראות"
         }
         // הצעת פטור מאופטימיזציית סוללה (קריטי לאמינות רקע)
         binding.btnBattery.visibility = if (isIgnoringBattery()) android.view.View.GONE else android.view.View.VISIBLE
@@ -134,12 +241,8 @@ class MainActivity : AppCompatActivity() {
         val v = com.blackalert.app.BuildConfig.VERSION_NAME
         val msg = android.text.Html.fromHtml(
             "<b>צבע שחור</b> — גרסה $v<br><br>" +
-            "<b>קרדיטים:</b><br>" +
-            "• מערכת ההתראות <b>\"צבע שחור\"</b><br>" +
-            "• יוצר שרת ההתראות — <a href=\"https://mitmachim.top/user/dudua99\">dudua99</a><br>" +
-            "• פיתוח האפליקציה — <a href=\"https://github.com/613avi\">613avi</a><br>" +
-            "• ולכלל התורמים לפרויקט 🙏<br><br>" +
-            "<a href=\"https://github.com/613avi/black-alert-app\">דף הפרויקט בגיטהאב</a>",
+            "<b>דיווחים</b> - מערכת צבע שחור<br>טלפון <a href=\"tel:0738881241\">0738881241</a><br><br>" +
+            "<b>פיתוח</b> - <a href=\"https://github.com/613avi\">github.com/613avi</a>",
             android.text.Html.FROM_HTML_MODE_COMPACT
         )
         val dialog = androidx.appcompat.app.AlertDialog.Builder(this)

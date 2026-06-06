@@ -39,14 +39,54 @@ class Prefs(context: Context) {
         get() = sp.getInt("proximityRadiusKm", 25)
         set(v) = sp.edit { putInt("proximityRadiusKm", v) }
 
+    /** אופן סינון הקרבה: "radius" = מרחק אווירי (ק"מ), "time" = זמן הגעה (דקות נסיעה). */
+    var proximityMode: String
+        get() = sp.getString("proximityMode", "radius") ?: "radius"
+        set(v) = sp.edit { putString("proximityMode", v) }
+    /** סף זמן נסיעה (דקות) במצב proximity לפי זמן. */
+    var proximityTimeMin: Int
+        get() = sp.getInt("proximityTimeMin", 15).coerceIn(1, 240)
+        set(v) = sp.edit { putInt("proximityTimeMin", v.coerceIn(1, 240)) }
+
+    /** הצגת זמני הגעה (נסיעה/הליכה/אופניים) בהתראה — דורש מיקום. */
+    var travelTimesEnabled: Boolean
+        get() = sp.getBoolean("travelTimesEnabled", true)
+        set(v) = sp.edit { putBoolean("travelTimesEnabled", v) }
+
+    /** Anti-spoof: התעלמות ממיקומי mock (מזויפים). */
+    var ignoreMockLocation: Boolean
+        get() = sp.getBoolean("ignoreMockLocation", true)
+        set(v) = sp.edit { putBoolean("ignoreMockLocation", v) }
+
     // --- צליל / חיווי ---
+    // soundName: שם raw מצורף (bell2/…) או "custom" כשנבחר צליל מהמכשיר.
     var soundName: String
         get() = sp.getString("soundName", "bell2") ?: "bell2"
         set(v) = sp.edit { putString("soundName", v) }
 
+    /** URI של צליל מותאם אישית (כשנבחר מבורר הצלילים). ריק = אין. */
+    var customSoundUri: String
+        get() = sp.getString("customSoundUri", "") ?: ""
+        set(v) = sp.edit { putString("customSoundUri", v) }
+
     var vibrate: Boolean
         get() = sp.getBoolean("vibrate", true)
         set(v) = sp.edit { putBoolean("vibrate", v) }
+
+    /** רטט בלבד — ללא צליל. */
+    var vibrateOnly: Boolean
+        get() = sp.getBoolean("vibrateOnly", false)
+        set(v) = sp.edit { putBoolean("vibrateOnly", v) }
+
+    /** צלצול גם במצב "נא לא להפריע" (דורש גישת מדיניות התראות). ברירת מחדל כבוי. */
+    var overrideDnd: Boolean
+        get() = sp.getBoolean("overrideDnd", false)
+        set(v) = sp.edit { putBoolean("overrideDnd", v) }
+
+    /** האם המשתמש כבר עבר את מסך הבחירה הראשוני (אזורים) אחרי התקנה. */
+    var firstRunDone: Boolean
+        get() = sp.getBoolean("firstRunDone", false)
+        set(v) = sp.edit { putBoolean("firstRunDone", v) }
 
     /** חלון מסך-מלא שמדליק את המסך ומציג מעל המסך הנעול. */
     var fullScreenAlert: Boolean
@@ -74,6 +114,21 @@ class Prefs(context: Context) {
     var serviceEnabled: Boolean
         get() = sp.getBoolean("serviceEnabled", true)
         set(v) = sp.edit { putBoolean("serviceEnabled", v) }
+
+    // --- MQTT (ערוץ push למכשירים ללא Google Play) ---
+    // broker ריק = MQTT כבוי. דוגמה: "ssl://broker.example.com:8883" או "tcp://10.0.0.5:1883"
+    var mqttBrokerUrl: String
+        get() = sp.getString("mqttBrokerUrl", "") ?: ""
+        set(v) = sp.edit { putString("mqttBrokerUrl", v.trim()) }
+    var mqttTopic: String
+        get() = sp.getString("mqttTopic", "alerts") ?: "alerts"
+        set(v) = sp.edit { putString("mqttTopic", v.trim().ifEmpty { "alerts" }) }
+    var mqttUsername: String
+        get() = sp.getString("mqttUsername", "") ?: ""
+        set(v) = sp.edit { putString("mqttUsername", v) }
+    var mqttPassword: String
+        get() = sp.getString("mqttPassword", "") ?: ""
+        set(v) = sp.edit { putString("mqttPassword", v) }
 
     // --- בדיקת עדכונים ---
     var lastUpdateCheckMs: Long

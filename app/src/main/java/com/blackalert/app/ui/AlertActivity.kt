@@ -68,6 +68,7 @@ class AlertActivity : AppCompatActivity() {
         } else null
 
         loadMap(target, eventType)
+        loadTravelTimes(target)
 
         binding.btnNavigate.isEnabled = target != null
         binding.btnNavigate.alpha = if (target != null) 1f else 0.4f
@@ -79,7 +80,33 @@ class AlertActivity : AppCompatActivity() {
         }
         binding.btnClose.setOnClickListener { stopRinging(); finish() }
 
-        if (withSound) startRinging()
+        startAlerting(audible = withSound)
+    }
+
+    /** מחשב ומציג זמני הגעה ממיקום המשתמש (ברקע — לא חוסם את הצגת ההתראה). */
+    private fun loadTravelTimes(target: NavTarget?) {
+        if (target == null || !com.blackalert.app.data.Prefs(this).travelTimesEnabled) return
+        val fix = com.blackalert.app.service.LocationProvider.best(this) ?: return
+        binding.travelPanel.visibility = android.view.View.VISIBLE
+        binding.travelMain.text = "מחשב מרחק ממיקומך…"
+        binding.travelSub.text = ""
+        Thread {
+            val info = com.blackalert.app.util.TravelTime.compute(fix.lat, fix.lng, target.lat, target.lng)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                fun m(v: Int) = if (v < 0) "—" else "$v"
+                binding.travelMain.text = "🚗 ${m(info.driveMin)} דק' נסיעה ממיקומך"
+                val parts = mutableListOf<String>()
+                if (info.showWalk) parts.add("🚶 ${info.walkMin} דק' הליכה")
+                if (info.showBike) parts.add("🛴 ${info.bikeMin} דק' אופניים/קורקינט")
+                if (parts.isEmpty()) {
+                    binding.travelSub.visibility = android.view.View.GONE
+                } else {
+                    binding.travelSub.visibility = android.view.View.VISIBLE
+                    binding.travelSub.text = parts.joinToString(" · ")
+                }
+            }
+        }.start()
     }
 
     private fun colorForEventType(t: Int): Int = when (t) {
@@ -132,11 +159,17 @@ class AlertActivity : AppCompatActivity() {
         }
     }
 
-    private fun startRinging() {
+    private fun startAlerting(audible: Boolean) {
         val prefs = Prefs(this)
-        val resId = resources.getIdentifier(prefs.soundName, "raw", packageName).let {
-            if (it != 0) it else R.raw.bell2
-        }
+        // רטט אם מופעל רטט או רטט-בלבד; צליל רק אם audible (כבר מנוכה רטט-בלבד/שקט)
+        if (prefs.vibrate || prefs.vibrateOnly) startVibration()
+        if (audible) startSound(prefs)
+        // עצירה אוטומטית אחרי 60ש' אם המשתמש לא הגיב
+        binding.root.postDelayed({ stopRinging() }, 60_000)
+    }
+
+    private fun startSound(prefs: Prefs) {
+        val uri = com.blackalert.app.util.NotificationHelper(this).soundUri(prefs)
         runCatching {
             player = MediaPlayer().apply {
                 setAudioAttributes(
@@ -145,15 +178,12 @@ class AlertActivity : AppCompatActivity() {
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
-                setDataSource(this@AlertActivity, android.net.Uri.parse("android.resource://$packageName/$resId"))
+                setDataSource(this@AlertActivity, uri)
                 isLooping = true
                 prepare()
                 start()
             }
         }
-        if (prefs.vibrate) startVibration()
-        // עצירה אוטומטית אחרי 60ש' אם המשתמש לא הגיב — לא לצלצל לנצח
-        binding.root.postDelayed({ stopRinging() }, 60_000)
     }
 
     private fun startVibration() {

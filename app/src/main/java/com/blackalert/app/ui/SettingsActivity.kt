@@ -12,6 +12,18 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var prefs: Prefs
 
+    // בורר צלילי המכשיר — מחזיר URI של הצליל שנבחר
+    private val ringtonePicker = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.getParcelableExtra<android.net.Uri>(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        if (uri != null) {
+            prefs.soundName = "custom"
+            prefs.customSoundUri = uri.toString()
+            updateCustomSoundLabel()
+        }
+    }
+
     // סוגי אירוע: id → תווית
     private val eventTypes = listOf(
         0 to "נסיון מעצר מ.צ.",
@@ -46,19 +58,30 @@ class SettingsActivity : AppCompatActivity() {
             binding.eventTypesContainer.addView(cb)
         }
 
-        // צליל
+        // צליל (raw מצורף). בחירה מהספינר מבטלת צליל מותאם.
         binding.soundSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, sounds)
         binding.soundSpinner.setSelection(sounds.indexOf(prefs.soundName).coerceAtLeast(0))
         binding.soundSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: android.widget.AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) {
-                prefs.soundName = sounds[pos]
+                prefs.soundName = sounds[pos]; updateCustomSoundLabel()
             }
             override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
         }
+        binding.btnPickSound.setOnClickListener { openRingtonePicker() }
+        updateCustomSoundLabel()
 
         // מתגים
         binding.switchVibrate.isChecked = prefs.vibrate
         binding.switchVibrate.setOnCheckedChangeListener { _, c -> prefs.vibrate = c }
+
+        binding.switchVibrateOnly.isChecked = prefs.vibrateOnly
+        binding.switchVibrateOnly.setOnCheckedChangeListener { _, c -> prefs.vibrateOnly = c }
+
+        binding.switchDnd.isChecked = prefs.overrideDnd
+        binding.switchDnd.setOnCheckedChangeListener { _, c ->
+            prefs.overrideDnd = c
+            if (c) requestDndAccessIfNeeded()
+        }
 
         binding.switchFullscreen.isChecked = prefs.fullScreenAlert
         binding.switchFullscreen.setOnCheckedChangeListener { _, c -> prefs.fullScreenAlert = c }
@@ -70,7 +93,23 @@ class SettingsActivity : AppCompatActivity() {
         binding.switchLocalHistory.setOnCheckedChangeListener { _, c -> prefs.localHistoryEnabled = c }
 
         binding.switchProximity.isChecked = prefs.proximityEnabled
-        binding.switchProximity.setOnCheckedChangeListener { _, c -> prefs.proximityEnabled = c }
+        binding.switchProximity.setOnCheckedChangeListener { _, c ->
+            prefs.proximityEnabled = c
+            if (c) ensureBackgroundLocationForProximity()
+        }
+
+        // קרבה: מצב מרחק/זמן + ערכים
+        binding.switchProximityTime.isChecked = prefs.proximityMode == "time"
+        binding.switchProximityTime.setOnCheckedChangeListener { _, c -> prefs.proximityMode = if (c) "time" else "radius" }
+        binding.proximityRadius.setText(prefs.proximityRadiusKm.toString())
+        binding.proximityTime.setText(prefs.proximityTimeMin.toString())
+        binding.btnSaveProximity.setOnClickListener {
+            prefs.proximityRadiusKm = binding.proximityRadius.text.toString().toIntOrNull() ?: prefs.proximityRadiusKm
+            prefs.proximityTimeMin = binding.proximityTime.text.toString().toIntOrNull() ?: prefs.proximityTimeMin
+            binding.proximityRadius.setText(prefs.proximityRadiusKm.toString())
+            binding.proximityTime.setText(prefs.proximityTimeMin.toString())
+            android.widget.Toast.makeText(this, "נשמר", android.widget.Toast.LENGTH_SHORT).show()
+        }
 
         // שעות שקטות
         binding.switchQuiet.isChecked = prefs.quietEnabled
@@ -121,6 +160,75 @@ class SettingsActivity : AppCompatActivity() {
             com.blackalert.app.service.PollingService.stop(this)
             if (prefs.serviceEnabled) com.blackalert.app.service.PollingService.start(this)
             android.widget.Toast.makeText(this, "מקור עודכן: ${prefs.sourceBaseUrl}", android.widget.Toast.LENGTH_SHORT).show()
+        }
+
+        // MQTT (push למכשירים ללא Google) — שינוי מפעיל מחדש את השירות
+        binding.mqttBroker.setText(prefs.mqttBrokerUrl)
+        binding.mqttTopic.setText(prefs.mqttTopic)
+        binding.btnSaveMqtt.setOnClickListener {
+            prefs.mqttBrokerUrl = binding.mqttBroker.text.toString()
+            prefs.mqttTopic = binding.mqttTopic.text.toString()
+            com.blackalert.app.service.PollingService.stop(this)
+            if (prefs.serviceEnabled) com.blackalert.app.service.PollingService.start(this)
+            val mode = com.blackalert.app.service.PushManager.effectiveMode(this)
+            android.widget.Toast.makeText(this, "MQTT נשמר · ערוץ פעיל: $mode", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun openRingtonePicker() {
+        val intent = Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE,
+                android.media.RingtoneManager.TYPE_NOTIFICATION or android.media.RingtoneManager.TYPE_ALARM or android.media.RingtoneManager.TYPE_RINGTONE)
+            putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "בחר צליל התראה")
+            putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            val cur = prefs.customSoundUri
+            if (cur.isNotEmpty()) putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, android.net.Uri.parse(cur))
+        }
+        runCatching { ringtonePicker.launch(intent) }
+            .onFailure { android.widget.Toast.makeText(this, "אין בורר צלילים במכשיר", android.widget.Toast.LENGTH_SHORT).show() }
+    }
+
+    private fun updateCustomSoundLabel() {
+        if (prefs.soundName == "custom" && prefs.customSoundUri.isNotEmpty()) {
+            val title = runCatching {
+                android.media.RingtoneManager.getRingtone(this, android.net.Uri.parse(prefs.customSoundUri))?.getTitle(this)
+            }.getOrNull() ?: "צליל מותאם אישית"
+            binding.customSoundLabel.visibility = android.view.View.VISIBLE
+            binding.customSoundLabel.text = "✓ צליל נבחר: $title (גובר על הרשימה)"
+        } else {
+            binding.customSoundLabel.visibility = android.view.View.GONE
+        }
+    }
+
+    /** סינון קרבה רץ ברקע → צריך מיקום "אפשר תמיד". אם חסר, מסביר ומפנה להגדרות. */
+    private fun ensureBackgroundLocationForProximity() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return // <10: אין הרשאת רקע נפרדת
+        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+            this, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (granted) return
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("סינון לפי קרבה")
+            .setMessage(
+                "סינון לפי קרבה מתבצע ברקע, ולכן דורש הרשאת מיקום \"אפשר תמיד\".\n\n" +
+                "בלעדיה — ההתראות עדיין יתקבלו (הליבה לא תלויה במיקום), אך הסינון לפי קרבה לא יפעל ברקע.\n\n" +
+                "במסך שייפתח: הרשאות → מיקום → \"אפשר תמיד\"."
+            )
+            .setPositiveButton("פתח הגדרות") { _, _ ->
+                runCatching {
+                    startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        android.net.Uri.parse("package:$packageName")))
+                }
+            }
+            .setNegativeButton("דלג", null)
+            .show()
+    }
+
+    private fun requestDndAccessIfNeeded() {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        if (!nm.isNotificationPolicyAccessGranted) {
+            android.widget.Toast.makeText(this, "אשר גישת 'נא לא להפריע' לאפליקציה", android.widget.Toast.LENGTH_LONG).show()
+            runCatching { startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
         }
     }
 

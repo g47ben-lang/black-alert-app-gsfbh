@@ -33,6 +33,7 @@ class PollingService : Service() {
     private var connected = true
     private var lastListsCheck = 0L
 
+    private var mqtt: MqttChannel? = null
     @Volatile private var screenOn = true
     private val screenReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(c: Context?, i: Intent?) {
@@ -49,6 +50,10 @@ class PollingService : Service() {
         lastOkTime = System.currentTimeMillis()
         // הפעלת push אם זמין (failover); הרשמה למצב מסך לחיסכון סוללה
         PushManager.applyDelivery(this)
+        // מכשיר ללא Play אך עם MQTT מוגדר → חיבור MQTT מתמשך (חסכוני בסוללה)
+        if (PushManager.effectiveMode(this) == "mqtt") {
+            mqtt = MqttChannel(this).also { it.start() }
+        }
         val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
         screenOn = pm.isInteractive
         registerReceiver(screenReceiver, android.content.IntentFilter().apply {
@@ -73,7 +78,7 @@ class PollingService : Service() {
         while (currentCoroutineContext().isActive) {
             val ok = runOnce()
             updateForegroundConnectivity()
-            val pushMode = PushManager.effectiveMode(this) == "push"
+            val pushMode = PushManager.isPushActive(this)
             val delayMs: Long = if (pushMode) {
                 // push פעיל — בדיקה רק כ-safety-net (מניעת כשל). 0 = כבוי → מרווח ארוך מאוד.
                 val m = prefs.safetyPollMinutes
@@ -144,6 +149,7 @@ class PollingService : Service() {
     override fun onDestroy() {
         loopJob?.cancel()
         scope.cancel()
+        runCatching { mqtt?.stop() }
         runCatching { unregisterReceiver(screenReceiver) }
         wakeLock?.let { if (it.isHeld) it.release() }
         // ניסיון החייאה: אם המשתמש לא כיבה ידנית — בקש מהמערכת להפעיל מחדש

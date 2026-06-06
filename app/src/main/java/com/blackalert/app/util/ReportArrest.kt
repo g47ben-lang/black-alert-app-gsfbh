@@ -18,7 +18,7 @@ import androidx.core.content.ContextCompat
  */
 object ReportArrest {
     // מוקד "צבע שחור" + שלוחת דיווח. (ניתן לעדכון במקום אחד.)
-    const val NUMBER = "07338881241"
+    const val NUMBER = "0738881241"
     const val EXTENSION = "*"
     private const val PERM_REQ = 7311
 

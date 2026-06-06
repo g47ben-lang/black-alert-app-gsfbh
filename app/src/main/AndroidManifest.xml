@@ -10,8 +10,13 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
-    <!-- Optional: only used for "alert by proximity" mode -->
+    <!-- Optional: "alert by proximity" + travel-time to the incident.
+         Core alert reception NEVER needs location; these gate only proximity/travel.
+         BACKGROUND_LOCATION ("Allow all the time") is required for proximity filtering,
+         which runs in the background service; without it proximity fails open. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!-- Optional: "דיווח על מעצר" — חיוג ישיר למוקד (אחרת נופל ל-dialer מוכן) -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
 

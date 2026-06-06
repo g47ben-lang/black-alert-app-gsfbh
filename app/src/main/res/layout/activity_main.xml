@@ -10,80 +10,56 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="20dp">
 
-        <!-- כותרת: לוגו + שם -->
+        <!-- כותרת: לוגו + שם + סטטוס -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginTop="8dp">
+            android:gravity="center_vertical">
 
             <ImageView
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/logo"
                 android:contentDescription="@string/app_name" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:text="@string/app_name"
-                android:textColor="@color/primary"
-                android:textSize="30sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp">
-
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
+                android:layout_marginStart="12dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textColor="@color/primary"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/statusText"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/on_surface"
-                    android:textSize="16sp"
-                    android:lineSpacingMultiplier="1.4" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switchService"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="@string/main_service_switch"
-                    android:textColor="@color/on_surface"
-                    android:textSize="17sp" />
+                    android:textColor="@color/on_surface_var"
+                    android:textSize="13sp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnBattery"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:backgroundTint="@color/primary"
-            android:textColor="@color/on_primary"
-            android:text="@string/main_battery"
-            android:visibility="gone" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchService"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
 
+        <!-- דיווח על מעצר -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnReport"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="28dp"
+            android:layout_height="58dp"
+            android:layout_marginTop="16dp"
             android:backgroundTint="#FFD32F2F"
             android:textColor="@color/white"
             android:textSize="18sp"
@@ -93,12 +69,40 @@
             app:iconTint="@color/white" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnTest"
+            android:id="@+id/btnBattery"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:backgroundTint="@color/primary"
             android:textColor="@color/on_primary"
+            android:text="@string/main_battery"
+            android:visibility="gone" />
+
+        <!-- התראות אחרונות מהשרת -->
+        <TextView style="@style/SectionHeader" android:text="התראות אחרונות" />
+
+        <LinearLayout
+            android:id="@+id/recentContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHistory"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="כל ההתראות שהתקבלו במכשיר" />
+
+        <!-- בקרות -->
+        <TextView style="@style/SectionHeader" android:text="כללי" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTest"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:text="@string/main_test" />
 
         <com.google.android.material.button.MaterialButton
@@ -106,23 +110,15 @@
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:text="@string/main_settings" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnHistory"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/main_history" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAbout"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:text="אודות וקרדיטים" />
 
     </LinearLayout>

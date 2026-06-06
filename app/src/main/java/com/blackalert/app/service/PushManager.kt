@@ -29,22 +29,32 @@ object PushManager {
         return code == ConnectionResult.SUCCESS
     }
 
-    /** מצב המסירה האפקטיבי בהינתן בחירת המשתמש והזמינות בפועל. */
+    fun isMqttConfigured(context: Context): Boolean = Prefs(context).mqttBrokerUrl.isNotBlank()
+
+    /**
+     * הערוץ האפקטיבי: "fcm" / "mqtt" / "poll".
+     * auto: FCM אם זמין (Play+Firebase) → אחרת MQTT אם מוגדר → אחרת polling.
+     * push: כופה ערוץ push (fcm→mqtt) אם קיים, אחרת poll. poll: תמיד polling.
+     */
     fun effectiveMode(context: Context): String {
+        val fcm = isPushAvailable(context)
+        val mqtt = isMqttConfigured(context)
         return when (Prefs(context).deliveryMode) {
-            "push" -> if (isPushAvailable(context)) "push" else "poll" // כפיית push אך אין זמינות → נופל ל-poll
             "poll" -> "poll"
-            else -> if (isPushAvailable(context)) "push" else "poll"   // auto
+            "push", "auto", null -> if (fcm) "fcm" else if (mqtt) "mqtt" else "poll"
+            else -> if (fcm) "fcm" else if (mqtt) "mqtt" else "poll"
         }
     }
 
-    /** מפעיל push אם רלוונטי: מאתחל Firebase ונרשם ל-topic. בטוח לקרוא תמיד. */
+    /** האם ערוץ push כלשהו פעיל (להחלטת safety-poll מול polling מהיר). */
+    fun isPushActive(context: Context): Boolean = effectiveMode(context) != "poll"
+
+    /** מפעיל FCM אם רלוונטי (MQTT מנוהל ע"י ה-Foreground Service). בטוח לקרוא תמיד. */
     fun applyDelivery(context: Context) {
-        if (effectiveMode(context) == "push") {
+        if (effectiveMode(context) == "fcm") {
             ensureFirebase(context)
             subscribe(context)
         } else {
-            // אם אנחנו ב-poll אך אותחל קודם — ביטול הרשמה (best-effort)
             if (initialized) runCatching {
                 FirebaseMessaging.getInstance().unsubscribeFromTopic(topic(context))
             }

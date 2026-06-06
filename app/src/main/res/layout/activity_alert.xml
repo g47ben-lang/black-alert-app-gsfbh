@@ -68,6 +68,33 @@
         android:textSize="14sp"
         android:lineSpacingMultiplier="1.4" />
 
+    <!-- זמני הגעה ממיקום המשתמש (נסיעה גדול; הליכה/אופניים קטן) -->
+    <LinearLayout
+        android:id="@+id/travelPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/travelMain"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/travelSub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/on_surface_var"
+            android:textSize="13sp" />
+    </LinearLayout>
+
     <!-- מפה (נוצרת ב-runtime בתוך מיכל זה — עמיד בכשל אם אין WebView במכשיר) -->
     <FrameLayout
         android:id="@+id/mapContainer"
