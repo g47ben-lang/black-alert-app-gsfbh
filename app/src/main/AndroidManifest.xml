@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- מאפשר את דיאלוג "אפשר התעלמות מאופטימיזציית סוללה" הישיר (אמינות רקע) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Optional: "alert by proximity" + travel-time to the incident.
          Core alert reception NEVER needs location; these gate only proximity/travel.
          BACKGROUND_LOCATION ("Allow all the time") is required for proximity filtering,

@@ -80,7 +80,7 @@ class AlertActivity : AppCompatActivity() {
         }
         binding.btnClose.setOnClickListener { stopRinging(); finish() }
 
-        startAlerting(audible = withSound)
+        startAlerting(audible = withSound, live = !viewOnly)
     }
 
     /** מחשב ומציג זמני הגעה ממיקום המשתמש (ברקע — לא חוסם את הצגת ההתראה). */
@@ -159,7 +159,9 @@ class AlertActivity : AppCompatActivity() {
         }
     }
 
-    private fun startAlerting(audible: Boolean) {
+    private fun startAlerting(audible: Boolean, live: Boolean) {
+        // live=false (צפייה בהיסטוריה) → ללא רטט/צליל בכלל
+        if (!live) return
         val prefs = Prefs(this)
         // רטט אם מופעל רטט או רטט-בלבד; צליל רק אם audible (כבר מנוכה רטט-בלבד/שקט)
         if (prefs.vibrate || prefs.vibrateOnly) startVibration()

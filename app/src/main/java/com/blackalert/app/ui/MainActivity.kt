@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnSettings.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         binding.btnHistory.setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
-        binding.btnTest.setOnClickListener { fireTestAlert() }
+        binding.btnTest.setOnClickListener { showTestOptions() }
         binding.btnBattery.setOnClickListener { requestIgnoreBatteryOptimizations() }
         binding.btnAbout.setOnClickListener { showAbout() }
         binding.btnReport.setOnClickListener { confirmReportArrest() }
@@ -207,6 +207,19 @@ class MainActivity : AppCompatActivity() {
                 notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+    }
+
+    private fun showTestOptions() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("בדיקת התראה")
+            .setMessage("כדי לראות את מסך ההתראה המלא — בחר \"בעוד 10 שניות\", נעל/כבה את המסך, והמתן.")
+            .setPositiveButton("עכשיו") { _, _ -> fireTestAlert() }
+            .setNeutralButton("בעוד 10 שניות") { _, _ ->
+                android.widget.Toast.makeText(this, "נעל את המסך — הבדיקה תופיע בעוד 10 שניות", android.widget.Toast.LENGTH_LONG).show()
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ fireTestAlert() }, 10_000)
+            }
+            .setNegativeButton("ביטול", null)
+            .show()
     }
 
     /** התראת בדיקה — מדמה אירוע מקומי דרך אותו צינור (כולל מסך מלא+צליל+ניווט). */
