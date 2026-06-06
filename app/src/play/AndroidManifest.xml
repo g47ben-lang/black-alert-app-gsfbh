@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- גרסת Google Play: הסרת הרשאות שמדיניות Play אוסרת/מגבילה.
+         הקוד עצמו מגודר ב-BuildConfig.PLAY_STORE כך שלא ייעשה בהן שימוש. -->
+
+    <!-- עדכון-עצמי אסור ב-Play (העדכונים דרך החנות בלבד) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+    <!-- אופטימיזציית סוללה — דיאלוג ישיר מוגבל; ב-Play משתמשים במסך ההגדרות -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove" />
+    <!-- מיקום-רקע דורש סקירת מדיניות מיוחדת — מוסר; סינון קרבה יעבוד בחזית בלבד -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove" />
+    <!-- חיוג ישיר — ב-Play נשתמש ב-ACTION_DIAL (ללא הרשאה) -->
+    <uses-permission android:name="android.permission.CALL_PHONE" tools:node="remove" />
+
+</manifest>

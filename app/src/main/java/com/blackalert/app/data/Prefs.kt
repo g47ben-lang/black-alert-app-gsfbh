@@ -130,6 +130,25 @@ class Prefs(context: Context) {
         get() = sp.getString("mqttPassword", "") ?: ""
         set(v) = sp.edit { putString("mqttPassword", v) }
 
+    // --- ספירת התקנות/פעילים (heartbeat אנונימי) ---
+    /** מזהה התקנה אקראי ואנונימי (ללא קשר לחומרה) — נוצר פעם אחת. */
+    val installId: String
+        get() {
+            var id = sp.getString("installId", null)
+            if (id.isNullOrEmpty()) {
+                id = java.util.UUID.randomUUID().toString()
+                sp.edit { putString("installId", id) }
+            }
+            return id
+        }
+    var lastHeartbeatMs: Long
+        get() = sp.getLong("lastHeartbeatMs", 0L)
+        set(v) = sp.edit { putLong("lastHeartbeatMs", v) }
+    /** override ל-endpoint הספירה (לבדיקה). ריק = משתמשים בקבוע ב-Heartbeat. */
+    var analyticsUrl: String
+        get() = sp.getString("analyticsUrl", "") ?: ""
+        set(v) = sp.edit { putString("analyticsUrl", v.trim()) }
+
     // --- בדיקת עדכונים ---
     var lastUpdateCheckMs: Long
         get() = sp.getLong("lastUpdateCheckMs", 0L)

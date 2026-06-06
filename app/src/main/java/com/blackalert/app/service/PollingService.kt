@@ -101,6 +101,7 @@ class PollingService : Service() {
     }
 
     private fun runOnce(): Boolean {
+        com.blackalert.app.net.Heartbeat.maybeSend(this) // ספירה אנונימית, פעם ביום (self-throttled)
         return try {
             val events = BlackAlertApi.fetchActiveNotifications()
             lastOkTime = System.currentTimeMillis()
@@ -141,6 +142,7 @@ class PollingService : Service() {
 
     /** בדיקת עדכון יומית (ברקע) → התראה אם קיימת גרסה חדשה שלא נדחתה. */
     private fun maybeNotifyUpdate() {
+        if (com.blackalert.app.BuildConfig.PLAY_STORE) return // ב-Play אין עדכון-עצמי
         val u = com.blackalert.app.net.UpdateChecker.checkForUpdate() ?: return
         if (u.tag == prefs.dismissedUpdateTag) return
         notifications.showUpdate(u.tag, u.pageUrl)

@@ -30,6 +30,22 @@ android {
             versionNameSuffix = "-test"
         }
     }
+
+    // שתי הפצות: sideload (GitHub, עם עדכון-עצמי) ו-play (תואם מדיניות Google Play).
+    flavorDimensions += "store"
+    productFlavors {
+        create("sideload") {
+            dimension = "store"
+            isDefault = true
+            buildConfigField("boolean", "PLAY_STORE", "false")
+        }
+        create("play") {
+            dimension = "store"
+            buildConfigField("boolean", "PLAY_STORE", "true")
+            // ב-Play מסירים את העדכון-העצמי, הרשאת התקנה, מיקום-רקע, חיוג ישיר ואופטימיזציית-סוללה
+            // (ראו src/play/AndroidManifest.xml + docs/PLAY_COMPLIANCE.md)
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

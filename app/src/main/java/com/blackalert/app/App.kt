@@ -12,6 +12,8 @@ class App : Application() {
         com.blackalert.app.net.BlackAlertApi.base = prefs.sourceBaseUrl
         // failover: הפעלת push אם המכשיר תומך (Play Services + Firebase מוגדר)
         com.blackalert.app.service.PushManager.applyDelivery(this)
+        // ספירת התקנות/פעילים (אנונימי, פעם ביום; כבוי אם אין endpoint)
+        com.blackalert.app.net.Heartbeat.maybeSend(this)
         // הפעלת השירות בעליית האפליקציה אם המשתמש לא כיבה אותו ידנית
         if (prefs.serviceEnabled) {
             PollingService.start(this)

@@ -162,6 +162,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkUpdateAsync() {
+        if (com.blackalert.app.BuildConfig.PLAY_STORE) return // ב-Play העדכונים דרך החנות
         val now = System.currentTimeMillis()
         if (now - prefs.lastUpdateCheckMs < 6L * 60 * 60 * 1000) return
         kotlin.concurrent.thread {
