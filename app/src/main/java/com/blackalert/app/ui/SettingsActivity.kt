@@ -40,6 +40,10 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        // קטגוריית "מתקדם" (push / מקור נתונים / MQTT) — מוצגת רק בגרסת הבדיקה, מוסתרת מהמשתמש הרגיל
+        binding.advancedSection.visibility =
+            if (com.blackalert.app.BuildConfig.DEBUG) android.view.View.VISIBLE else android.view.View.GONE
+
         binding.btnSelectCities.setOnClickListener {
             startActivity(Intent(this, CitiesSelectActivity::class.java))
         }

@@ -158,6 +158,13 @@
                 android:text="@string/set_save" />
         </LinearLayout>
 
+        <!-- קטגוריית מתקדם — מוסתרת בגרסה הרגילה, מוצגת רק בגרסת הבדיקה -->
+        <LinearLayout
+            android:id="@+id/advancedSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
         <TextView style="@style/SectionHeader" android:text="מסירה ותדירות (סוללה)" />
 
         <TextView
@@ -279,6 +286,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="@string/set_save" />
+
+        </LinearLayout>
+        <!-- /advancedSection -->
 
     </LinearLayout>
 </ScrollView>
