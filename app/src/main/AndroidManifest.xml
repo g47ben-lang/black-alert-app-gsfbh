@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!-- מאפשר את דיאלוג "אפשר התעלמות מאופטימיזציית סוללה" הישיר (אמינות רקע) -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- עדכון מתוך היישום — הורדה והתקנה של ה-APK -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Optional: "alert by proximity" + travel-time to the incident.
          Core alert reception NEVER needs location; these gate only proximity/travel.
          BACKGROUND_LOCATION ("Allow all the time") is required for proximity filtering,
@@ -109,6 +111,17 @@
         <receiver
             android:name=".ui.NotificationActionReceiver"
             android:exported="false" />
+
+        <!-- שיתוף קובץ ה-APK שהורד עם מתקין המערכת -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <!-- קבלת push (FCM) במכשירים עם Google Play Services -->
         <service

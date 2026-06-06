@@ -178,10 +178,7 @@ class MainActivity : AppCompatActivity() {
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("עדכון זמין — ${u.tag}")
             .setMessage("גרסה חדשה זמינה להורדה מגיטהאב.$notes")
-            .setPositiveButton("עדכן") { _, _ ->
-                val url = u.apkUrl ?: u.pageUrl
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-            }
+            .setPositiveButton("עדכן עכשיו") { _, _ -> doInAppUpdate(u) }
             .setNegativeButton("אחר כך", null)
             .setNeutralButton("דלג על גרסה זו") { _, _ -> prefs.dismissedUpdateTag = u.tag }
             .show()
@@ -248,6 +245,45 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("📞 חייג למוקד") { _, _ -> com.blackalert.app.util.ReportArrest.call(this) }
             .setNegativeButton("ביטול", null)
             .show()
+    }
+
+    /** עדכון מתוך היישום: הורדת ה-APK והפעלת המתקין. */
+    private fun doInAppUpdate(u: com.blackalert.app.net.UpdateChecker.Update) {
+        val apkUrl = u.apkUrl
+        if (apkUrl == null) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u.pageUrl))); return }
+        if (!com.blackalert.app.net.ApkUpdater.canInstall(this)) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("הרשאת התקנה")
+                .setMessage("כדי לעדכן מתוך היישום יש לאשר \"התקנה ממקור זה\". ייפתח מסך הגדרות — הפעל את ההרשאה ולחץ עדכן שוב.")
+                .setPositiveButton("פתח הגדרות") { _, _ -> com.blackalert.app.net.ApkUpdater.requestInstallPermission(this) }
+                .setNegativeButton("ביטול", null)
+                .show()
+            return
+        }
+        val bar = android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100; isIndeterminate = false; setPadding(48, 40, 48, 24)
+        }
+        val dlg = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("מוריד עדכון ${u.tag}…").setView(bar).setCancelable(false).create()
+        dlg.show()
+        kotlin.concurrent.thread {
+            val file = com.blackalert.app.net.ApkUpdater.download(this, apkUrl) { p ->
+                runOnUiThread { if (p < 0) bar.isIndeterminate = true else bar.progress = p }
+            }
+            runOnUiThread {
+                runCatching { dlg.dismiss() }
+                if (isFinishing) return@runOnUiThread
+                if (file != null) {
+                    if (!com.blackalert.app.net.ApkUpdater.installApk(this, file)) {
+                        android.widget.Toast.makeText(this, "פתיחת המתקין נכשלה", android.widget.Toast.LENGTH_SHORT).show()
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u.pageUrl)))
+                    }
+                } else {
+                    android.widget.Toast.makeText(this, "ההורדה נכשלה — נסה דרך הדפדפן", android.widget.Toast.LENGTH_LONG).show()
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u.pageUrl)))
+                }
+            }
+        }
     }
 
     private fun showAbout() {
