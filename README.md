@@ -43,16 +43,19 @@
 
 ## בנייה והתקנה
 
+**הורדה (תמיד הגרסה האחרונה):** https://github.com/613avi/black-alert-app/releases/latest/download/black-alert.apk
+
 ```bash
-./gradlew assembleRelease    # גרסת הפצה (חתום ב-Releases)
-./gradlew assembleDebug      # גרסת בדיקה (com.black.alert.test, מותקנת במקביל)
+./gradlew assembleSideloadRelease   # גרסת הפצה (GitHub)
+./gradlew assembleSideloadDebug     # גרסת בדיקה (com.black.alert.test)
+./gradlew bundlePlayRelease         # AAB ל-Google Play
 ```
-דרישות: JDK 17, Android SDK (platform 34, build-tools 34+). הורד APK חתום מ-[Releases](../../releases).
+דרישות: JDK 17, Android SDK (platform 34, build-tools 34+).
 
 ## תיעוד
 
-- 📖 **[docs/OVERVIEW.md](docs/OVERVIEW.md)** — הסבר מלא: המערכת, ה-API, מקור ההתראות, הארכיטקטורה.
 - 🧪 **[TESTING.md](TESTING.md)** — מדריך ברור לגרסת הבדיקה (שליחת התראות מהמחשב, צעד-אחר-צעד).
+- 🟢 **[docs/PLAY_COMPLIANCE.md](docs/PLAY_COMPLIANCE.md)** · 🔒 **[docs/PRIVACY.md](docs/PRIVACY.md)**
 
 ## גרסת בדיקה — שליחת התראות מהמחשב
 
