@@ -1,7 +1,10 @@
 package com.blackalert.app.ui
 
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import com.blackalert.app.data.Prefs
@@ -33,6 +36,12 @@ class SettingsActivity : AppCompatActivity() {
     )
     private val sounds = listOf("bell2", "bell", "ding", "alarm", "siren", "phone")
 
+    // שתי אפשרויות מסירה פשוטות בלבד
+    private val deliveryModes = listOf(
+        "auto" to "מהיר וחסכוני (Firebase — מומלץ)",
+        "poll" to "עצמאי — סריקה ישירה (ללא Google)"
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
@@ -40,9 +49,8 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        // קטגוריית "מתקדם" (push / מקור נתונים / MQTT) — מוצגת רק בגרסת הבדיקה, מוסתרת מהמשתמש הרגיל
-        binding.advancedSection.visibility =
-            if (com.blackalert.app.BuildConfig.DEBUG) android.view.View.VISIBLE else android.view.View.GONE
+        // חלק המסירה מוצג תמיד (לא רק בדיבאג)
+        binding.advancedSection.visibility = android.view.View.VISIBLE
 
         binding.btnSelectCities.setOnClickListener {
             startActivity(Intent(this, CitiesSelectActivity::class.java))
@@ -125,14 +133,18 @@ class SettingsActivity : AppCompatActivity() {
             prefs.quietTo = binding.quietTo.text.toString().ifBlank { "07:00" }
         }
 
-        // מסירה ותדירות (failover push / בדיקה ידנית)
-        val deliveryModes = listOf("auto" to "אוטומטי", "push" to "push (גוגל)", "poll" to "בדיקה ידנית")
+        // מסירה: שתי אפשרויות פשוטות בלבד
+        // "auto" = Firebase אם זמין; "poll" = סריקה ישירה ללא Google
+        val deliveryIdx = deliveryModes.indexOfFirst { it.first == prefs.deliveryMode }
+            .let { if (it < 0) 0 else it }
         binding.deliverySpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, deliveryModes.map { it.second })
-        binding.deliverySpinner.setSelection(deliveryModes.indexOfFirst { it.first == prefs.deliveryMode }.coerceAtLeast(0))
+        binding.deliverySpinner.setSelection(deliveryIdx)
         binding.deliverySpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: android.widget.AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) {
                 prefs.deliveryMode = deliveryModes[pos].first
                 updateDeliveryStatus()
+                updatePollFieldsVisibility()
+                if (deliveryModes[pos].first == "poll") requestIgnoreBatteryForPolling()
             }
             override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
         }
@@ -140,6 +152,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.pollOff.setText(prefs.pollOffSec.toString())
         binding.safetyPoll.setText(prefs.safetyPollMinutes.toString())
         updateDeliveryStatus()
+        updatePollFieldsVisibility()
         binding.btnSaveDelivery.setOnClickListener {
             prefs.pollOnSec = binding.pollOn.text.toString().toIntOrNull() ?: prefs.pollOnSec
             prefs.pollOffSec = binding.pollOff.text.toString().toIntOrNull() ?: prefs.pollOffSec
@@ -228,6 +241,37 @@ class SettingsActivity : AppCompatActivity() {
             .show()
     }
 
+    /** מציג שדות תדירות סריקה רק במצב עצמאי (poll); במצב Firebase הם מיותרים. */
+    private fun updatePollFieldsVisibility() {
+        val isPoll = prefs.deliveryMode == "poll"
+        val vis = if (isPoll) android.view.View.VISIBLE else android.view.View.GONE
+        binding.pollOn.visibility = vis
+        binding.pollOff.visibility = vis
+    }
+
+    /** מצב עצמאי דורש רקע רציף → מבקש פטור מאופטימיזציית סוללה. */
+    private fun requestIgnoreBatteryForPolling() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        if (pm.isIgnoringBatteryOptimizations(packageName)) return
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("מצב עצמאי — חשוב!")
+            .setMessage(
+                "במצב עצמאי האפליקציה סורקת את השרת ברציפות.\n\n" +
+                "בלי ביטול אופטימיזציית סוללה — אנדרואיד ירדים את האפליקציה ותפספס התראות.\n\n" +
+                "ייפתח מסך — אשר \"אל תבצע אופטימיזציה\" עבור צבע שחור."
+            )
+            .setPositiveButton("פתח הגדרות") { _, _ ->
+                runCatching {
+                    startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+                }.onFailure {
+                    runCatching { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+                }
+            }
+            .setNegativeButton("אחר כך", null)
+            .show()
+    }
+
     private fun requestDndAccessIfNeeded() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
         if (!nm.isNotificationPolicyAccessGranted) {
@@ -240,9 +284,10 @@ class SettingsActivity : AppCompatActivity() {
         val eff = com.blackalert.app.service.PushManager.effectiveMode(this)
         val available = com.blackalert.app.service.PushManager.isPushAvailable(this)
         binding.deliveryStatus.text = when {
-            eff == "push" -> "✓ פעיל כעת: push (גוגל)"
-            available -> "פעיל כעת: בדיקה ידנית (push זמין — ניתן לעבור)"
-            else -> "פעיל כעת: בדיקה ידנית (push לא זמין במכשיר זה)"
+            eff == "push" || eff == "fcm" -> "✓ פעיל כעת: מהיר (Firebase)"
+            eff == "mqtt" -> "✓ פעיל כעת: MQTT"
+            available -> "פעיל כעת: סריקה ישירה (Firebase זמין — ניתן לעבור למצב מהיר)"
+            else -> "פעיל כעת: סריקה ישירה (Firebase לא זמין במכשיר זה)"
         }
     }
 
