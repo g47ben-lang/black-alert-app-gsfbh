@@ -172,7 +172,7 @@ class Prefs(context: Context) {
 
     /** במצב push — כל כמה דקות בכל זאת לבדוק כ-safety-net (מניעת כשל אם push לא הגיע). 0=כבוי. */
     var safetyPollMinutes: Int
-        get() = sp.getInt("safetyPollMinutes", 15).coerceIn(0, 240)
+        get() = sp.getInt("safetyPollMinutes", 5).coerceIn(0, 240)
         set(v) = sp.edit { putInt("safetyPollMinutes", v.coerceIn(0, 240)) }
 
     // --- תדירות בדיקה אדפטיבית (חיסכון סוללה) ---

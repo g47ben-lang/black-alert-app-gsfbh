@@ -121,10 +121,17 @@ async function tick() {
   }
 }
 
-// שרת Keep-Alive (נדרש ע"י Render)
+// שרת Keep-Alive (נדרש ע"י Render) + health-check ל-UptimeRobot
+const startTime = Date.now();
 http.createServer((req, res) => {
-  res.writeHead(200);
-  res.end("Black Alert Gateway is alive!");
+  if (req.url === "/health") {
+    const upSec = Math.floor((Date.now() - startTime) / 1000);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true, uptime: upSec, seen: seen.size }));
+  } else {
+    res.writeHead(200);
+    res.end("Black Alert Gateway is alive!");
+  }
 }).listen(process.env.PORT || 3000, () => {
   console.log(`[http] שרת Keep-Alive פועל על פורט ${process.env.PORT || 3000}`);
 });
