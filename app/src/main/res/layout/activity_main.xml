@@ -148,8 +148,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingTop="16dp"
-            android:gap="10dp">
+            android:paddingTop="16dp">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnTest"
