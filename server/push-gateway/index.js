@@ -133,3 +133,5 @@ setTimeout(sendTestMessage, 2000);
 // מתחילים את הלולאה הקבועה
 setInterval(tick, POLL_MS);
 tick();
+const http = require('http');
+http.createServer((req, res) => res.end('Black Alert Server is Alive!')).listen(process.env.PORT || 3000);
