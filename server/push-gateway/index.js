@@ -5,13 +5,13 @@
 const mqtt = require("mqtt");
 const http = require('http');
 
-// כאן אנחנו מגדירים את המקורות שלנו במערך (Array)
+// כאן המקורות המתוקנים והנקיים
 const SOURCE_URLS = [
   "https://black-alert.com/notifications",
-  "https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbxTdA_sh1UZYYpU0DxU0OJZIUEnc5aCb_myPRryT822CKxT2uvDfAMQASzYFPKI5aSEHw/exec/exec" // כאן תדביק את הכתובת מה-Google Script
+  "https://script.google.com/macros/s/AKfycbxTdA_sh1UZYYpU0DxU0OJZIUEnc5aCb_myPRryT822CKxT2uvDfAMQASzYFPKI5aSEHw/exec"
 ];
 
-const POLL_MS = parseInt(process.env.POLL_MS || "3000", 10);
+const POLL_MS = parseInt(process.env.POLL_MS || "5000", 10); // העליתי ל-5 שניות כדי למנוע חסימות
 const FCM_TOPIC = process.env.FCM_TOPIC || "alerts";
 const MQTT_URL = process.env.MQTT_URL || "";
 const MQTT_TOPIC = process.env.MQTT_TOPIC || "alerts";
@@ -37,12 +37,12 @@ if (MQTT_URL) {
 const seen = new Set();
 function key(ev) { return ev.notificationId + ":" + (ev.version || 1); }
 
-// הפונקציה החדשה שסורקת את כל המקורות
 async function fetchEvents() {
   let allEvents = [];
   for (const url of SOURCE_URLS) {
     try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      // הוספתי הגדרות מתקדמות ל-fetch למנוע Timeout
+      const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
       if (r.ok) {
         const j = await r.json();
         allEvents = allEvents.concat(Array.isArray(j) ? j : []);
@@ -56,7 +56,7 @@ async function fetchEvents() {
 
 function toData(ev) {
   const d = {
-    notificationId: String(ev.notificationId),
+    notificationId: String(ev.notificationId || Date.now()),
     cities: JSON.stringify(Array.isArray(ev.cities) ? ev.cities : []),
     eventType: String(ev.eventType ?? 8),
     time: String(ev.time ?? Math.floor(Date.now() / 1000)),
@@ -65,7 +65,6 @@ function toData(ev) {
     address: String(ev.address ?? ""),
     silent: String(ev.silent ?? false)
   };
-  if (ev.status) d.status = String(ev.status);
   return d;
 }
 
@@ -90,15 +89,15 @@ async function tick() {
       seen.add(k);
       if (seen.size > 1000) seen.delete(seen.values().next().value);
       await fanout(ev);
-      console.log(`[fanout] נשלחה התראה: ${k} - הערה: ${ev.note || "אין טקסט"}`);
+      console.log(`[fanout] נשלחה התראה: ${ev.note || "אין טקסט"}`);
     }
   } catch (e) { console.warn("[tick] שגיאה:", e.message); }
 }
 
-// שרת Keep-Alive ל-Render
+// שרת Keep-Alive
 http.createServer((req, res) => res.end('Black Alert Server is Alive!')).listen(process.env.PORT || 3000);
 
-// הפעלה!
+// הפעלה
 console.log(`[gateway] מתחיל סריקה...`);
 setInterval(tick, POLL_MS);
 tick();
