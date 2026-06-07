@@ -52,11 +52,53 @@ class MainActivity : AppCompatActivity() {
 
         requestNotificationPermission()
         requestLocationPermission()
+        ensureFullScreenPermission()   // ← בקשת הרשאת מסך-מלא (אנדרואיד 14+)
 
         // הפעלה ראשונה אחרי התקנה → הפניה לבחירת אזורי התראה
         if (!prefs.firstRunDone) {
             prefs.firstRunDone = true
             startActivity(Intent(this, CitiesSelectActivity::class.java))
+        }
+    }
+
+    /**
+     * מאנדרואיד 14 ומעלה — הרשאת USE_FULL_SCREEN_INTENT אינה ניתנת אוטומטית
+     * לאפליקציות מחוץ ל-Google Play. בלעדיה ההתראה תופיע רק כ-heads-up בסטטוס בר.
+     * כאן בודקים, ואם חסר — מסבירים ומפנים ישירות למסך האישור.
+     */
+    private fun ensureFullScreenPermission() {
+        if (Build.VERSION.SDK_INT < 34) return
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        if (nm.canUseFullScreenIntent()) return
+        if (prefs.fullScreenPermAsked) return
+        prefs.fullScreenPermAsked = true
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("הרשאת התראה במסך מלא")
+            .setMessage(
+                "כדי שהתראות יקפצו במסך מלא וידליקו את המסך (גם כשהוא נעול), " +
+                "יש לאשר \"התראות במסך מלא\" עבור צבע שחור.\n\n" +
+                "ייפתח מסך הגדרות — הפעל את המתג עבור צבע שחור וחזור לאפליקציה."
+            )
+            .setPositiveButton("פתח הגדרות") { _, _ -> openFullScreenSettings() }
+            .setNegativeButton("אחר כך", null)
+            .show()
+    }
+
+    private fun openFullScreenSettings() {
+        if (Build.VERSION.SDK_INT < 34) return
+        runCatching {
+            startActivity(
+                Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+                    .setData(Uri.parse("package:$packageName"))
+            )
+        }.onFailure {
+            runCatching {
+                startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        .setData(Uri.parse("package:$packageName"))
+                )
+            }
         }
     }
 
@@ -195,7 +237,6 @@ class MainActivity : AppCompatActivity() {
             !notifOk -> "✗ חסרה הרשאת התראות"
             else -> "● מאזין להתראות"
         }
-        // הצעת פטור מאופטימיזציית סוללה (קריטי לאמינות רקע)
         binding.btnBattery.visibility = if (isIgnoringBattery()) android.view.View.GONE else android.view.View.VISIBLE
     }
 
