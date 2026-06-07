@@ -93,6 +93,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("fullScreenAlert", true)
         set(v) = sp.edit { putBoolean("fullScreenAlert", v) }
 
+    /** האם כבר ביקשנו מהמשתמש את הרשאת המסך-המלא (כדי לא להציק שוב ושוב). */
+    var fullScreenPermAsked: Boolean
+        get() = sp.getBoolean("fullScreenPermAsked", false)
+        set(v) = sp.edit { putBoolean("fullScreenPermAsked", v) }
+
     // --- שעות שקטות ---
     var quietEnabled: Boolean
         get() = sp.getBoolean("quietEnabled", false)
