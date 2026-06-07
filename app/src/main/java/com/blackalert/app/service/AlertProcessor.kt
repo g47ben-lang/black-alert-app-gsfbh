@@ -64,6 +64,14 @@ class AlertProcessor(context: Context) {
             info != null && (selCities.contains(info.id) || selAreas.contains(info.areaId))
         }
 
+        // האם *כל* ערי האירוע אינן מזוהות במאגר (עיר חדשה/חופשית/הודעת מערכת).
+        // fail-open: מתריעים בכל מקרה — עדיף התראה מיותרת מאשר לפספס התראת אמת.
+        val allCitiesUnknown = event.cities.isNotEmpty() && event.cities.all { cityKey ->
+            cities.cityByKey(cityKey) == null
+        }
+        // אירוע ללא ערים כלל (הודעת מערכת/טקסט חופשי) — גם הוא תמיד עובר.
+        val noCities = event.cities.isEmpty()
+
         val target = resolveTarget(event)
 
         // סינון לפי קרבה (מצב אופציונלי) — גובר על בחירת ערים אם הופעל
@@ -72,8 +80,8 @@ class AlertProcessor(context: Context) {
             if (near == false) return AlertDecision.Ignore
             // near==null (אין מיקום/קואורדינטות) ⇒ לא מסננים, מתריעים ליתר ביטחון
         } else {
-            if (!selectAll && !matchedSelection) {
-                // לא נבחר: או שקט (אם silentNotSelected) או התעלמות
+            // עיר לא מזוהה / ללא עיר ⇒ תמיד עובר (fail-open). אחרת — לפי בחירה.
+            if (!selectAll && !matchedSelection && !allCitiesUnknown && !noCities) {
                 if (!prefs.silentNotSelected) return AlertDecision.Ignore
             }
         }
@@ -81,7 +89,8 @@ class AlertProcessor(context: Context) {
         // --- האם לצלצל ---
         val cal = Calendar.getInstance()
         val quiet = prefs.isWithinQuietHours(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
-        val silentBecauseNotSelected = prefs.silentNotSelected && !matchedSelection && !selectAll && !prefs.proximityEnabled
+        val silentBecauseNotSelected = prefs.silentNotSelected && !matchedSelection && !selectAll &&
+            !allCitiesUnknown && !noCities && !prefs.proximityEnabled
         val withSound = !event.silent && !quiet && !silentBecauseNotSelected
 
         return AlertDecision.Alert(event, withSound, target)
