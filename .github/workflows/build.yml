@@ -56,7 +56,13 @@ jobs:
       if: steps.signing.outputs.available == 'false'
       run: |
         echo "=== SHA-1 של חתימת DEBUG (להוספה ב-Firebase Console) ==="
-        keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android 2>/dev/null | grep "SHA1:"
+        KS=$(find / -name "debug.keystore" 2>/dev/null | head -1)
+        echo "נמצא ב: $KS"
+        if [ -n "$KS" ]; then
+          keytool -list -v -keystore "$KS" -alias androiddebugkey -storepass android -keypass android 2>/dev/null | grep -E "SHA1:|SHA-1:"
+        else
+          echo "debug.keystore לא נמצא — הפעל Android Studio פעם אחת כדי ליצור אותו"
+        fi
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
