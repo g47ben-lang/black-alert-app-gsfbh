@@ -177,6 +177,14 @@ class SettingsActivity : AppCompatActivity() {
             android.widget.Toast.makeText(this, "נשמר", android.widget.Toast.LENGTH_SHORT).show()
         }
 
+        // gateway URL — כתובת שרת ה-Render לדיווחי "הגעתי לזירה"
+        binding.gatewayUrl.setText(prefs.gatewayUrl)
+        binding.btnSaveGateway.setOnClickListener {
+            prefs.gatewayUrl = binding.gatewayUrl.text.toString().trim()
+            binding.gatewayUrl.setText(prefs.gatewayUrl)
+            android.widget.Toast.makeText(this, if (prefs.gatewayUrl.isNotBlank()) "שרת gateway נשמר" else "כפתור הגעתי לזירה הושבת", android.widget.Toast.LENGTH_SHORT).show()
+        }
+
         // מקור נתונים (מתקדם) — שינוי דורש הפעלה מחדש של השירות כדי שייכנס לתוקף
         binding.sourceUrl.setText(prefs.sourceBaseUrl)
         binding.btnSaveSource.setOnClickListener {

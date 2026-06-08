@@ -477,6 +477,51 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- שרת gateway — "הגעתי לזירה" -->
+            <TextView style="@style/SectionHeader" android:text="מתקדם — שרת דיווחים" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/surface_2"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="כתובת שרת ה-gateway (Render) לכפתור &quot;הגעתי לזירה&quot;. ריק = הכפתור מוסתר."
+                        android:textSize="12sp"
+                        android:textColor="@color/on_surface_var"
+                        android:layout_marginBottom="8dp" />
+
+                    <EditText
+                        android:id="@+id/gatewayUrl"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="https://your-app.onrender.com"
+                        android:inputType="textUri"
+                        android:textDirection="ltr"
+                        android:background="@color/surface_3"
+                        android:padding="10dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSaveGateway"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/set_save"
+                        app:cornerRadius="8dp" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
             <!-- מקור נתונים -->
             <TextView style="@style/SectionHeader" android:text="מתקדם — מקור נתונים" />
 

@@ -48,7 +48,12 @@ object BlackAlertApi {
      * POST /api/arrived — דיווח הגעה לזירה. הצוות רואה את זה בממשק הניהול.
      * זורק חריגה בכשל (הקורא אחראי על toast/לוג).
      */
-    fun reportArrival(eventType: Int, cities: List<String>, address: String, lat: Double?, lng: Double?) {
+    /**
+     * POST /api/arrived — דיווח הגעה לזירה לשרת ה-gateway (Render).
+     * gatewayBase חייב להיות מוגדר ב-Prefs, אחרת זורק שגיאה.
+     */
+    fun reportArrival(gatewayBase: String, eventType: Int, cities: List<String>, address: String, lat: Double?, lng: Double?) {
+        if (gatewayBase.isBlank()) throw IllegalStateException("gateway not configured")
         val body = org.json.JSONObject().apply {
             put("event_type", eventType)
             put("cities", org.json.JSONArray(cities))
@@ -56,7 +61,7 @@ object BlackAlertApi {
             if (lat != null && lng != null) { put("lat", lat); put("lng", lng) }
             put("timestamp", System.currentTimeMillis() / 1000)
         }.toString()
-        httpPost("$base/api/arrived", body)
+        httpPost("$gatewayBase/api/arrived", body)
     }
 
     private fun httpPost(urlStr: String, jsonBody: String) {

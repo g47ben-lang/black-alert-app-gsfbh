@@ -92,8 +92,10 @@ class AlertActivity : AppCompatActivity() {
         // X בפינה העליונה — סגירת המסך לגמרי.
         binding.btnCloseTop.setOnClickListener { AlertRinger.stop(); finish() }
 
-        binding.btnArrived.visibility = if (viewOnly) android.view.View.GONE else android.view.View.VISIBLE
-        binding.btnArrived.setOnClickListener { reportArrival(title, cities, address) }
+        val gateway = com.blackalert.app.data.Prefs(this).gatewayUrl
+        val showArrived = !viewOnly && gateway.isNotBlank()
+        binding.btnArrived.visibility = if (showArrived) android.view.View.VISIBLE else android.view.View.GONE
+        if (showArrived) binding.btnArrived.setOnClickListener { reportArrival(gateway, title, cities, address) }
 
         startAlerting(audible = withSound, live = !viewOnly)
     }
@@ -181,7 +183,7 @@ class AlertActivity : AppCompatActivity() {
         AlertRinger.start(this, Prefs(this), audible)
     }
 
-    private fun reportArrival(title: String, cities: String, address: String) {
+    private fun reportArrival(gateway: String, title: String, cities: String, address: String) {
         binding.btnArrived.isEnabled = false
         binding.btnArrived.text = "שולח…"
         val cityList = cities.split(", ").filter { it.isNotBlank() }
@@ -189,6 +191,7 @@ class AlertActivity : AppCompatActivity() {
         Thread {
             val ok = runCatching {
                 com.blackalert.app.net.BlackAlertApi.reportArrival(
+                    gatewayBase = gateway,
                     eventType = intent.getIntExtra(EXTRA_EVENT_TYPE, 8),
                     cities = cityList,
                     address = address,
