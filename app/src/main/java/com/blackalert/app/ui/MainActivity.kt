@@ -213,13 +213,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun confirmCallExtradition() {
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("🚨 דיווח על הסגרה")
+            .setTitle("דיווח על הסגרה")
             .setMessage(
                 "פעולה זו תחייג ישירות למוקד \"צבע שחור\" ותעביר אותך לשלוחת הדיווח על הסגרה.\n\n" +
                 "מספר: ${com.blackalert.app.util.ReportArrest.NUMBER} · שלוחה ${com.blackalert.app.util.ReportArrest.EXTENSION}\n" +
                 "השלוחה תישלח אוטומטית לאחר המענה.\n\nלחייג עכשיו?"
             )
-            .setPositiveButton("📞 חייג") { _, _ -> com.blackalert.app.util.ReportArrest.call(this) }
+            .setPositiveButton("חייג") { _, _ -> com.blackalert.app.util.ReportArrest.call(this) }
             .setNegativeButton("ביטול", null)
             .show()
     }
