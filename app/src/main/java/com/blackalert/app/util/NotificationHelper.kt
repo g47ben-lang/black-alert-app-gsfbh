@@ -46,7 +46,8 @@ class NotificationHelper(private val context: Context) {
             .setContentText(text)
             .setOngoing(true)
             .setContentIntent(pi)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setSilent(true)
             .build()
     }
 
@@ -238,7 +239,7 @@ class NotificationHelper(private val context: Context) {
     private fun ensureForegroundChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         if (nm.getNotificationChannel(CH_FOREGROUND) == null) {
-            val ch = NotificationChannel(CH_FOREGROUND, context.getString(R.string.ch_foreground), NotificationManager.IMPORTANCE_LOW)
+            val ch = NotificationChannel(CH_FOREGROUND, context.getString(R.string.ch_foreground), NotificationManager.IMPORTANCE_MIN)
             ch.setShowBadge(false)
             nm.createNotificationChannel(ch)
         }
