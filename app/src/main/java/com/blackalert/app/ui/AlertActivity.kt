@@ -209,15 +209,32 @@ class AlertActivity : AppCompatActivity() {
     }
 
     private fun reportArrival(title: String, cities: String, address: String) {
-        val loc = if (address.isNotBlank()) "$cities — $address" else cities
-        val body = "הגעתי לזירה: $title\n$loc"
-        val smsIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("sms:${com.blackalert.app.util.ReportArrest.NUMBER}")).apply {
-            putExtra("sms_body", body)
-        }
-        runCatching { startActivity(smsIntent) }
-            .onFailure {
-                android.widget.Toast.makeText(this, "לא ניתן לפתוח SMS במכשיר זה", android.widget.Toast.LENGTH_SHORT).show()
+        binding.btnArrived.isEnabled = false
+        binding.btnArrived.text = "שולח…"
+        val cityList = cities.split(", ").filter { it.isNotBlank() }
+        val t = target
+        Thread {
+            val ok = runCatching {
+                com.blackalert.app.net.BlackAlertApi.reportArrival(
+                    eventType = intent.getIntExtra(EXTRA_EVENT_TYPE, 8),
+                    cities = cityList,
+                    address = address,
+                    lat = t?.lat,
+                    lng = t?.lng
+                )
+            }.isSuccess
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (ok) {
+                    binding.btnArrived.text = "✓ הדיווח נשלח"
+                    binding.btnArrived.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF1B5E20.toInt())
+                } else {
+                    binding.btnArrived.isEnabled = true
+                    binding.btnArrived.text = "הגעתי לזירה"
+                    android.widget.Toast.makeText(this, "שליחת הדיווח נכשלה — בדוק חיבור", android.widget.Toast.LENGTH_SHORT).show()
+                }
             }
+        }.start()
     }
 
     override fun onDestroy() {

@@ -44,6 +44,39 @@ object BlackAlertApi {
 
     fun fetchCitiesJson(version: Int): String = httpGet("$base/static/cities.json?v=$version")
 
+    /**
+     * POST /api/arrived — דיווח הגעה לזירה. הצוות רואה את זה בממשק הניהול.
+     * זורק חריגה בכשל (הקורא אחראי על toast/לוג).
+     */
+    fun reportArrival(eventType: Int, cities: List<String>, address: String, lat: Double?, lng: Double?) {
+        val body = org.json.JSONObject().apply {
+            put("event_type", eventType)
+            put("cities", org.json.JSONArray(cities))
+            put("address", address)
+            if (lat != null && lng != null) { put("lat", lat); put("lng", lng) }
+            put("timestamp", System.currentTimeMillis() / 1000)
+        }.toString()
+        httpPost("$base/api/arrived", body)
+    }
+
+    private fun httpPost(urlStr: String, jsonBody: String) {
+        val conn = (java.net.URL(urlStr).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = TIMEOUT_MS; readTimeout = TIMEOUT_MS
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("User-Agent", "BlackAlertApp/1.0 (Android)")
+        }
+        try {
+            conn.outputStream.use { it.write(jsonBody.toByteArray(Charsets.UTF_8)) }
+            val code = conn.responseCode
+            if (code !in 200..299) throw RuntimeException("HTTP $code for $urlStr")
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     private fun httpGet(urlStr: String): String {
         val url = URL(urlStr)
         val conn = (url.openConnection() as HttpURLConnection).apply {
