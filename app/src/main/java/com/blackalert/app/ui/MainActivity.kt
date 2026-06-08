@@ -121,12 +121,15 @@ class MainActivity : AppCompatActivity() {
 
         kotlin.concurrent.thread {
             var fromCache = false
+            var fetchError: String? = null
             val events = try {
                 val fetched = com.blackalert.app.net.BlackAlertApi.fetchHistory()
                 ServerStateCache.save(this, fetched)
                 fetched
             } catch (e: Exception) {
                 fromCache = true
+                fetchError = e.message ?: e.javaClass.simpleName
+                android.util.Log.w("BlackAlert", "fetchHistory failed: $fetchError")
                 ServerStateCache.load(this)
             }
 
@@ -134,15 +137,15 @@ class MainActivity : AppCompatActivity() {
                 if (isFinishing) return@runOnUiThread
                 container.removeAllViews()
                 if (fromCache && events.isEmpty()) {
-                    container.addView(infoText("אין חיבור לשרת ואין נתונים שמורים."))
+                    container.addView(infoText("⚠ אין חיבור לשרת ואין נתונים שמורים.\n($fetchError)"))
                     return@runOnUiThread
                 }
                 if (events.isEmpty()) {
-                    container.addView(infoText("אין התראות פעילות כרגע."))
+                    container.addView(infoText("אין התראות פעילות כרגע בשרת."))
                     return@runOnUiThread
                 }
                 if (fromCache) {
-                    container.addView(infoText("⚠ מציג נתונים שמורים — השרת אינו זמין כרגע"))
+                    container.addView(infoText("⚠ אין חיבור לשרת — מציג נתונים שמורים\n($fetchError)"))
                 }
                 val repo = CitiesRepository.get(this)
                 events.sortedByDescending { it.time }.forEach { container.addView(alertCard(it, repo)) }
