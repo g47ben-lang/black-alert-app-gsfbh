@@ -169,6 +169,9 @@ class PollingService : Service() {
         const val LISTS_CHECK_MS = 24L * 60 * 60 * 1000
 
         fun start(context: Context) {
+            // כשפירבייס (FCM) או MQTT פעיל — push מגיע ישירות, אין צורך בשירות foreground.
+            // השירות נחוץ רק במצב "סריקה ישירה" (poll).
+            if (PushManager.isPushActive(context)) return
             val i = Intent(context, PollingService::class.java)
             androidx.core.content.ContextCompat.startForegroundService(context, i)
         }
