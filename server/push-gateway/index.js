@@ -128,7 +128,7 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-const ADMIN_PASS = process.env.ADMIN_PASS || "1234";
+const ADMIN_PASS = process.env.ADMIN_PASS || "blackalert2025";
 const EVENT_NAMES = { 0: "נסיון מעצר מ.צ.", 2: "התרעת מחסומים", 3: "נסיון הסגרה", 8: "התראה כללית" };
 let arrivalReports = [];
 const startTime = Date.now();
@@ -274,7 +274,10 @@ if (pass) { fetch('/api/reports',{headers:{'x-pass':pass}}).then(r=>{ if(r.ok){d
 
 // הפעלת השרת
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`[server] פועל על פורט ${PORT} | dashboard: /dashboard`));
+app.listen(PORT, () => {
+  console.log(`[server] פועל על פורט ${PORT} | dashboard: /dashboard`);
+  console.log(`[dashboard] סיסמה: ${ADMIN_PASS}`);
+});
 
 // הפעלה
 console.log(`[gateway] מתחיל | מקורות: ${SOURCE_URLS.length} | סריקה כל ${POLL_MS}ms`);

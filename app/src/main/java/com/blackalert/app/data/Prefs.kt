@@ -205,9 +205,9 @@ class Prefs(context: Context) {
         get() = sp.getString("sourceBaseUrl", "https://black-alert.com") ?: "https://black-alert.com"
         set(v) = sp.edit { putString("sourceBaseUrl", v.trim().trimEnd('/')) }
 
-    /** כתובת שרת ה-gateway (Render) לדיווחי "הגעתי לזירה". ריק = הכפתור מושבת. */
+    /** כתובת שרת ה-gateway (Render) לדיווחי "הגעתי לזירה". */
     var gatewayUrl: String
-        get() = sp.getString("gatewayUrl", "") ?: ""
+        get() = sp.getString("gatewayUrl", "https://black-alert-app-gsfbh.onrender.com") ?: "https://black-alert-app-gsfbh.onrender.com"
         set(v) = sp.edit { putString("gatewayUrl", v.trim().trimEnd('/')) }
 
     /** האם הזמן הנוכחי נמצא בטווח ההשתקה (תומך בטווח שחוצה חצות). */

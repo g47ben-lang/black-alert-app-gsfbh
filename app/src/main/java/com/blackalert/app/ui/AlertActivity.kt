@@ -93,9 +93,8 @@ class AlertActivity : AppCompatActivity() {
         binding.btnCloseTop.setOnClickListener { AlertRinger.stop(); finish() }
 
         val gateway = com.blackalert.app.data.Prefs(this).gatewayUrl
-        val showArrived = !viewOnly && gateway.isNotBlank()
-        binding.btnArrived.visibility = if (showArrived) android.view.View.VISIBLE else android.view.View.GONE
-        if (showArrived) binding.btnArrived.setOnClickListener { reportArrival(gateway, title, cities, address) }
+        binding.btnArrived.visibility = if (viewOnly) android.view.View.GONE else android.view.View.VISIBLE
+        binding.btnArrived.setOnClickListener { reportArrival(gateway, title, cities, address) }
 
         startAlerting(audible = withSound, live = !viewOnly)
     }
