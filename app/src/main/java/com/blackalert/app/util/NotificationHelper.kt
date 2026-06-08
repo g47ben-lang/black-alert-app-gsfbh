@@ -1,14 +1,18 @@
 package com.blackalert.app.util
 
+import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.blackalert.app.R
 import com.blackalert.app.data.AlertEvent
@@ -101,13 +105,25 @@ class NotificationHelper(private val context: Context) {
             )
         } else null
 
-        // בנייה+פרסום. onlyAlertOnce → עדכון (זמני הגעה) לא מצלצל שוב. fullScreen רק בפרסום הראשון.
-        fun post(bodyText: String, collapsed: String, withFullScreen: Boolean) {
+        // כפתור "התעלם" — מבטל את ההתראה. requestCode נפרד (notifId xor) כדי לא להתנגש ב-navPi.
+        val dismissPi: PendingIntent = run {
+            val dismissIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+                action = NotificationActionReceiver.ACTION_DISMISS
+                putExtra(NotificationActionReceiver.EXTRA_NOTIF_ID, notifId)
+            }
+            PendingIntent.getBroadcast(
+                context, notifId xor 0x44, dismissIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        }
+
+        // בנייה+פרסום. onlyAlertOnce → עדכון (מפה/זמני הגעה) לא מצלצל שוב. fullScreen רק בפרסום הראשון.
+        // mapBitmap != null → תצוגת BigPicture עם מפה; אחרת BigText.
+        fun post(bodyText: String, collapsed: String, withFullScreen: Boolean, mapBitmap: Bitmap?) {
             val b = NotificationCompat.Builder(context, channel)
                 .setSmallIcon(R.drawable.ic_alert)
                 .setContentTitle(title)
                 .setContentText(collapsed)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(bodyText))
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -115,17 +131,41 @@ class NotificationHelper(private val context: Context) {
                 .setOnlyAlertOnce(true)
                 .setContentIntent(fullScreenPi)
                 .setColor(0xFFD32F2F.toInt())
-            if (withFullScreen && prefs.fullScreenAlert) b.setFullScreenIntent(fullScreenPi, true)
+            if (event.cities.size > 1) b.setSubText("${event.cities.size} יישובים")
+            if (mapBitmap != null) {
+                b.setLargeIcon(mapBitmap)
+                b.setStyle(
+                    NotificationCompat.BigPictureStyle()
+                        .bigPicture(mapBitmap)
+                        .bigLargeIcon(null as Bitmap?)   // לא לכפול את התמונה כשמורחב
+                        .setBigContentTitle(title)
+                        .setSummaryText(bodyText)
+                )
+            } else {
+                b.setStyle(NotificationCompat.BigTextStyle().bigText(bodyText))
+            }
             if (navPi != null) b.addAction(R.drawable.ic_navigate, context.getString(R.string.action_navigate), navPi)
+            b.addAction(R.drawable.ic_close, context.getString(R.string.action_close), dismissPi)
+            if (withFullScreen && prefs.fullScreenAlert) b.setFullScreenIntent(fullScreenPi, true)
             nm.notify(notifId, b.build())
         }
 
-        post(baseBody, cityNames, withFullScreen = true)
+        post(baseBody, cityNames, withFullScreen = true, mapBitmap = null)
 
-        // העשרה אסינכרונית בזמני הגעה ממיקום המשתמש (לא מעכב את ההתראה; לא מצלצל שוב)
-        if (prefs.travelTimesEnabled && target != null) {
-            val fix = com.blackalert.app.service.LocationProvider.best(context)
-            if (fix != null) Thread {
+        // כפיית מסך-מלא גם כשהמכשיר בשימוש פעיל (אנדרואיד מציג full-screen-intent כבאנר בלבד אז).
+        if (prefs.fullScreenAlert && prefs.forceFullScreen && canForceFullScreen()) {
+            runCatching { context.startActivity(fullScreenIntent) }
+        }
+
+        // העשרה אסינכרונית: מפה סטטית בבאנר + זמני הגעה ממיקום המשתמש. לא מעכב, לא מצלצל שוב.
+        val wantMap = prefs.mapInNotification && target != null
+        val wantTravel = prefs.travelTimesEnabled && target != null
+        if (target != null && (wantMap || wantTravel)) Thread {
+            val map = if (wantMap) StaticMap.build(target.lat, target.lng, event.eventType) else null
+            val fix = if (wantTravel) com.blackalert.app.service.LocationProvider.best(context) else null
+            var body = baseBody
+            var collapsed = cityNames
+            if (fix != null) {
                 val info = com.blackalert.app.util.TravelTime.compute(fix.lat, fix.lng, target.lat, target.lng)
                 fun m(v: Int) = if (v < 0) "—" else "$v"
                 // נסיעה תמיד; הליכה/אופניים רק אם פחות מחצי שעה (קרוב).
@@ -133,9 +173,21 @@ class NotificationHelper(private val context: Context) {
                 if (info.showWalk) sub.add("🚶 ${info.walkMin} דק' הליכה")
                 if (info.showBike) sub.add("🛴 ${info.bikeMin} דק' אופניים/קורקינט")
                 val travel = "🚗 ${m(info.driveMin)} דק' נסיעה ממיקומך" + if (sub.isEmpty()) "" else "\n" + sub.joinToString(" · ")
-                post(baseBody + "\n" + travel, "$cityNames · 🚗 ${m(info.driveMin)} דק' נסיעה", withFullScreen = false)
-            }.start()
-        }
+                body = "$baseBody\n$travel"
+                collapsed = "$cityNames · 🚗 ${m(info.driveMin)} דק' נסיעה"
+            }
+            // נפרסם מחדש רק אם יש מה להוסיף (מפה או זמני נסיעה)
+            if (map != null || fix != null) post(body, collapsed, withFullScreen = false, mapBitmap = map)
+        }.start()
+    }
+
+    /** האם מותר ובכלל צריך לכפות מסך-מלא: רק כשהמסך דולק ולא נעול, ויש הרשאת הצגה-מעל. */
+    private fun canForceFullScreen(): Boolean {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val km = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        val inUse = pm.isInteractive && !km.isKeyguardLocked
+        // כשהמסך כבוי/נעול — full-screen-intent כבר מטפל בזה; כופים רק במצב שימוש פעיל.
+        return inUse && Settings.canDrawOverlays(context)
     }
 
     fun cancelAlert(event: AlertEvent) {

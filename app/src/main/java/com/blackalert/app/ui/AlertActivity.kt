@@ -78,7 +78,18 @@ class AlertActivity : AppCompatActivity() {
                 stopRinging(); finish()
             }
         }
-        binding.btnClose.setOnClickListener { stopRinging(); finish() }
+        // "השתקה" — עוצר צפצוף+רטט אך משאיר את ההתראה גלויה (המשתמש עדיין רואה את הפרטים והמפה).
+        binding.btnMute.text = getString(R.string.action_mute)   // איפוס למצב התראה חדשה (onNewIntent)
+        binding.btnMute.isEnabled = true
+        binding.btnMute.alpha = 1f
+        binding.btnMute.setOnClickListener {
+            stopRinging()
+            binding.btnMute.text = getString(R.string.action_muted)
+            binding.btnMute.isEnabled = false
+            binding.btnMute.alpha = 0.5f
+        }
+        // X בפינה העליונה — סגירת המסך לגמרי.
+        binding.btnCloseTop.setOnClickListener { stopRinging(); finish() }
 
         startAlerting(audible = withSound, live = !viewOnly)
     }

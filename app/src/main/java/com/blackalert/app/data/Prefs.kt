@@ -98,6 +98,20 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("fullScreenPermAsked", false)
         set(v) = sp.edit { putBoolean("fullScreenPermAsked", v) }
 
+    /**
+     * כפיית מסך-מלא גם כשהמכשיר בשימוש פעיל (מסך דולק ולא נעול).
+     * אנדרואיד מציג full-screen-intent כבאנר בלבד כשהמכשיר בשימוש; כשמתג זה דולק
+     * אנו מפעילים את מסך ההתראה ישירות (דורש הרשאת "הצגה מעל אפליקציות אחרות").
+     */
+    var forceFullScreen: Boolean
+        get() = sp.getBoolean("forceFullScreen", false)
+        set(v) = sp.edit { putBoolean("forceFullScreen", v) }
+
+    /** הצגת תמונת-מפה סטטית בתוך באנר ההתראה (BigPicture). דורש רשת לטעינת אריחי המפה. */
+    var mapInNotification: Boolean
+        get() = sp.getBoolean("mapInNotification", true)
+        set(v) = sp.edit { putBoolean("mapInNotification", v) }
+
     // --- שעות שקטות ---
     var quietEnabled: Boolean
         get() = sp.getBoolean("quietEnabled", false)

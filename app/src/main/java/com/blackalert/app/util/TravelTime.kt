@@ -44,16 +44,22 @@ object TravelTime {
         }
         threads.forEach { runCatching { it.join((TIMEOUT_MS + 500).toLong()) } }
 
-        // אומדן גיבוי אם מנוע הניתוב לא ענה
+        // אומדן גיבוי אם מנוע הניתוב לא ענה (קורה תדיר במכשירים מסוננים שחוסמים את Valhalla).
         val air = haversineKm(originLat, originLng, destLat, destLng)
-        fun pick(mode: String, kmh: Double): Pair<Int, Double> {
-            results[mode]?.let { return it }
-            val km = air * 1.3 // תיקון מקורב מאווירי לכביש
-            return Math.max(1, Math.round(km / kmh * 60).toInt()) to km
-        }
-        val drive = pick("auto", 30.0)
-        val walk = pick("pedestrian", 5.0)
-        val bike = pick("bicycle", 16.0)
+        val roadKm = air * 1.3   // תיקון מקורב מאווירי לכביש
+
+        // מהירות נסיעה אפקטיבית (דלת-לדלת) שעולה עם המרחק: נסיעה קצרה בעיר איטית (~20 קמ"ש),
+        // נסיעה ארוכה נשלטת ע"י כבישים מהירים (~70 קמ"ש). מחליף את ה-30 קמ"ש הקבוע שניפח
+        // נסיעות בין-עירוניות פי ~2 (למשל 129 דק' במקום ~60 שוויז נותן).
+        val driveKmh = 70.0 - 50.0 * Math.exp(-roadKm / 25.0)
+
+        fun fb(km: Double, kmh: Double) = Math.max(1, Math.round(km / kmh * 60).toInt())
+        fun pick(mode: String, fallback: () -> Pair<Int, Double>): Pair<Int, Double> =
+            results[mode] ?: fallback()
+
+        val drive = pick("auto") { fb(roadKm, driveKmh) to roadKm }
+        val walk = pick("pedestrian") { fb(roadKm, 5.0) to roadKm }
+        val bike = pick("bicycle") { fb(roadKm, 16.0) to roadKm }
         return TravelInfo(drive.first, walk.first, bike.first, drive.second)
     }
 
