@@ -259,8 +259,7 @@ class SettingsActivity : AppCompatActivity() {
         val msg = android.text.Html.fromHtml(
             "<b>צבע שחור</b> — גרסה $v<br><br>" +
             "<b>דיווחים</b> - מערכת צבע שחור<br>טלפון <a href=\"tel:0738881241\">0738881241</a><br><br>" +
-            "<b>פיתוח</b> - <a href=\"https://github.com/613avi\">github.com/613avi</a> · <a href=\"mailto:g47ben@gmail.com\">g47ben</a><br><br>" +
-            "<b>תרומה לפיתוח</b> - חברונר מועד ב<br><br>" +
+            "<b>פיתוח</b> - <a href=\"https://github.com/613avi\">github.com/613avi</a> · <a href=\"mailto:g47ben@gmail.com\">חברונר ועד ב</a><br><br>" +
             "<small>הדיווחים נלקחים ממערכת \"צבע שחור\". היישום עצמאי ואינו מתופעל על ידה.</small>",
             android.text.Html.FROM_HTML_MODE_COMPACT
         )
