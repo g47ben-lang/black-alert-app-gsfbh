@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build & Sign Android APK
 
 on:
   push:
@@ -13,6 +13,13 @@ jobs:
     - name: Check out the code
       uses: actions/checkout@v4
 
+    - name: Check out signing keystore
+      uses: actions/checkout@v4
+      with:
+        repository: 613avi/black-alert-signing
+        token: ${{ secrets.SIGNING_REPO_TOKEN }}
+        path: signing
+
     - name: Set up Java
       uses: actions/setup-java@v4
       with:
@@ -22,11 +29,14 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
+    - name: Build & sign Release APK
+      env:
+        KEYSTORE_PATH: ${{ github.workspace }}/signing/black-alert-release.jks
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      run: ./gradlew assembleSideloadRelease
 
-    - name: Upload APK
+    - name: Upload signed APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
+        name: black-alert-signed
         path: "app/build/outputs/apk/**/*.apk"

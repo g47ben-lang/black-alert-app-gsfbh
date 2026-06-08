@@ -80,6 +80,9 @@ class AlertActivity : AppCompatActivity() {
         }
         binding.btnClose.setOnClickListener { stopRinging(); finish() }
 
+        binding.btnArrived.visibility = if (viewOnly) android.view.View.GONE else android.view.View.VISIBLE
+        binding.btnArrived.setOnClickListener { reportArrival(title, cities, address) }
+
         startAlerting(audible = withSound, live = !viewOnly)
     }
 
@@ -203,6 +206,18 @@ class AlertActivity : AppCompatActivity() {
         player = null
         vibrator?.cancel()
         vibrator = null
+    }
+
+    private fun reportArrival(title: String, cities: String, address: String) {
+        val loc = if (address.isNotBlank()) "$cities — $address" else cities
+        val body = "הגעתי לזירה: $title\n$loc"
+        val smsIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("sms:${com.blackalert.app.util.ReportArrest.NUMBER}")).apply {
+            putExtra("sms_body", body)
+        }
+        runCatching { startActivity(smsIntent) }
+            .onFailure {
+                android.widget.Toast.makeText(this, "לא ניתן לפתוח SMS במכשיר זה", android.widget.Toast.LENGTH_SHORT).show()
+            }
     }
 
     override fun onDestroy() {

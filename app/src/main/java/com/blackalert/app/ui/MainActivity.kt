@@ -332,8 +332,9 @@ class MainActivity : AppCompatActivity() {
         val v = com.blackalert.app.BuildConfig.VERSION_NAME
         val msg = android.text.Html.fromHtml(
             "<b>צבע שחור</b> — גרסה $v<br><br>" +
-            "<b>דיווחים</b> - מערכת צבע שחור<br>טלפון <a href=\"tel:0738881241\">0738881241</a><br><br>" +
-            "<b>פיתוח</b> - <a href=\"https://github.com/613avi\">github.com/613avi</a><br><br>" +
+            "<b>דיווחים</b> — מערכת צבע שחור<br>טלפון <a href=\"tel:0738881241\">0738881241</a><br><br>" +
+            "<b>פיתוח</b> — g47ben · <a href=\"mailto:g47ben@gmail.com\">g47ben@gmail.com</a><br>" +
+            "תמיכה בפיתוח — 613avi<br><br>" +
             "<small>הדיווחים נלקחים ממערכת \"צבע שחור\". היישום עצמאי ואינו מתופעל על ידה.</small>",
             android.text.Html.FROM_HTML_MODE_COMPACT
         )
