@@ -34,7 +34,7 @@ class SettingsActivity : AppCompatActivity() {
         3 to "נסיון הסגרה",
         8 to "התראה כללית"
     )
-    private val sounds = listOf("bell2", "bell", "ding", "alarm", "siren", "phone")
+    private val sounds = listOf("custom_alert", "bell2", "bell", "ding", "alarm", "siren", "phone")
 
     // שתי אפשרויות מסירה פשוטות בלבד
     private val deliveryModes = listOf(
@@ -71,7 +71,8 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // צליל (raw מצורף). בחירה מהספינר מבטלת צליל מותאם.
-        binding.soundSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, sounds)
+        val soundLabels = sounds.map { when(it) { "custom_alert" -> "התראה (ברירת מחדל)"; "bell2" -> "פעמון 2"; "bell" -> "פעמון"; "ding" -> "דינג"; "alarm" -> "אזעקה"; "siren" -> "סירנה"; "phone" -> "טלפון"; else -> it } }
+        binding.soundSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, soundLabels)
         binding.soundSpinner.setSelection(sounds.indexOf(prefs.soundName).coerceAtLeast(0))
         binding.soundSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: android.widget.AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) {

@@ -9,54 +9,68 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingBottom="24dp">
+        android:orientation="vertical">
 
-        <!-- כותרת עליונה -->
+        <!-- Hero header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:orientation="vertical"
             android:background="@color/surface"
-            android:paddingHorizontal="20dp"
-            android:paddingVertical="16dp">
-
-            <ImageView
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:src="@drawable/logo"
-                android:contentDescription="@string/app_name" />
+            android:paddingHorizontal="24dp"
+            android:paddingTop="24dp"
+            android:paddingBottom="20dp">
 
             <LinearLayout
-                android:layout_width="0dp"
-                android:layout_weight="1"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:orientation="vertical">
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/app_name"
-                    android:textColor="@color/primary"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.02" />
+                <ImageView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/logo"
+                    android:contentDescription="@string/app_name" />
 
-                <TextView
-                    android:id="@+id/statusText"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/on_surface_var"
-                    android:textSize="13sp"
-                    android:layout_marginTop="2dp" />
+                    android:layout_marginStart="16dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_name"
+                        android:textColor="@color/primary"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.03" />
+
+                    <TextView
+                        android:id="@+id/statusText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/on_surface_var"
+                        android:textSize="13sp"
+                        android:layout_marginTop="3dp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchService"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
             </LinearLayout>
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switchService"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+            <!-- קו הפרדה צהוב -->
+            <View
+                android:layout_width="48dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="18dp"
+                android:background="@color/primary" />
+
         </LinearLayout>
 
         <!-- כפתורי חיוג -->
@@ -64,46 +78,66 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingTop="16dp">
+            android:paddingHorizontal="20dp"
+            android:paddingTop="20dp">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCallExtradition"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
+                android:layout_height="64dp"
                 android:backgroundTint="#FFD32F2F"
                 android:textColor="@color/white"
-                android:textSize="18sp"
+                android:textSize="17sp"
                 android:textStyle="bold"
-                android:text="🚨 חייג לדווח על הסגרה"
-                app:cornerRadius="14dp" />
+                android:text="חייג לדווח על הסגרה"
+                android:letterSpacing="0.01"
+                app:cornerRadius="16dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCallMain"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:layout_marginTop="10dp"
+                android:layout_height="64dp"
+                android:layout_marginTop="12dp"
                 android:backgroundTint="#FF1565C0"
                 android:textColor="@color/white"
-                android:textSize="18sp"
+                android:textSize="17sp"
                 android:textStyle="bold"
-                android:text="📞 חייג למוקד בשלוחה ראשית"
+                android:text="חייג למוקד בשלוחה ראשית"
+                android:letterSpacing="0.01"
+                app:cornerRadius="16dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEmergencyContacts"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp"
+                android:backgroundTint="@color/surface_2"
+                android:textColor="@color/primary"
+                android:textSize="15sp"
+                android:text="קווי חירום וארגוני סיוע"
+                app:strokeColor="@color/primary"
+                app:strokeWidth="1dp"
                 app:cornerRadius="14dp" />
 
         </LinearLayout>
 
-        <!-- כותרת התראות שרת -->
+        <!-- כותרת התראות -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingHorizontal="20dp"
-            android:paddingTop="22dp"
+            android:paddingTop="28dp"
             android:paddingBottom="10dp">
 
+            <View
+                android:layout_width="4dp"
+                android:layout_height="18dp"
+                android:background="@color/primary"
+                android:layout_marginEnd="10dp" />
+
             <TextView
-                android:id="@+id/alertsTitle"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
@@ -117,7 +151,7 @@
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="היסטוריה מלאה ←"
+                android:text="היסטוריה מלאה"
                 android:textColor="@color/primary"
                 android:textSize="13sp"
                 android:minHeight="0dp"
@@ -125,29 +159,28 @@
                 android:paddingBottom="4dp" />
         </LinearLayout>
 
-        <!-- כרטיסי התראות שרת -->
+        <!-- כרטיסי התראות -->
         <LinearLayout
             android:id="@+id/recentContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="16dp" />
-
-        <!-- מפריד -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="20dp"
-            android:background="@color/surface_2" />
+            android:paddingHorizontal="20dp" />
 
         <!-- כפתור הגדרות -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingTop="16dp">
+            android:paddingHorizontal="20dp"
+            android:paddingTop="24dp"
+            android:paddingBottom="28dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/surface_2"
+                android:layout_marginBottom="20dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSettings"
@@ -155,7 +188,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:text="@string/main_settings"
-                app:cornerRadius="12dp" />
+                app:cornerRadius="14dp" />
 
         </LinearLayout>
 

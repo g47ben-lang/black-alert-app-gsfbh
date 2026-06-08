@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnHistory.setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
         binding.btnCallExtradition.setOnClickListener { confirmCallExtradition() }
         binding.btnCallMain.setOnClickListener { confirmCallMain() }
+        binding.btnEmergencyContacts.setOnClickListener { startActivity(Intent(this, EmergencyContactsActivity::class.java)) }
 
         requestNotificationPermission()
         requestLocationPermission()
@@ -54,7 +55,7 @@ class MainActivity : AppCompatActivity() {
 
         if (!prefs.firstRunDone) {
             prefs.firstRunDone = true
-            startActivity(Intent(this, CitiesSelectActivity::class.java))
+            startActivity(Intent(this, OnboardingActivity::class.java))
         }
     }
 
