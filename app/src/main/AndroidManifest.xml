@@ -85,6 +85,17 @@
             android:theme="@style/Theme.BlackAlert.Bar"
             android:parentActivityName=".ui.MainActivity" />
 
+        <activity
+            android:name=".ui.OnboardingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BlackAlert" />
+
+        <activity
+            android:name=".ui.EmergencyContactsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BlackAlert.Bar"
+            android:parentActivityName=".ui.MainActivity" />
+
         <!-- Full-screen ringing alert — shows over lockscreen -->
         <activity
             android:name=".ui.AlertActivity"

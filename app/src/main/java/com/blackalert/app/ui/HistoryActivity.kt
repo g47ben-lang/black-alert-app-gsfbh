@@ -14,24 +14,25 @@ import com.blackalert.app.data.AlertEvent
 import com.blackalert.app.data.CitiesRepository
 import com.blackalert.app.data.EventHistory
 import com.blackalert.app.data.HistoryStore
+import com.blackalert.app.data.ServerStateCache
 import com.blackalert.app.net.BlackAlertApi
 import kotlin.concurrent.thread
 
 /**
- * היסטוריה — מתג בין "מקומי" (log append-only ששומר עריכות) ל-"שרת" (/alerts-history).
- * המקומי שומר את שרשרת העריכות; השרת מציג את המצב הסופי בלבד.
+ * היסטוריה — שתי לשוניות:
+ * 1. "מקומי" — log append-only מקומי, כולל עריכות וסגירות, לעולם לא נמחק
+ * 2. "שרת"   — מצב השרת כרגע; כשאין חיבור — מציג את המטמון מהחיבור האחרון
  */
 class HistoryActivity : AppCompatActivity() {
 
-    private val bg = 0xFF121216.toInt()
+    private val bg      = 0xFF121216.toInt()
     private val surface = 0xFF23242C.toInt()
     private val onSurface = 0xFFE7E7EC.toInt()
-    private val onVar = 0xFFA8AAB5.toInt()
+    private val onVar   = 0xFFA8AAB5.toInt()
     private val primary = 0xFFFFD500.toInt()
 
     private lateinit var container: LinearLayout
     private lateinit var repo: CitiesRepository
-    private var serverLoaded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,14 +46,15 @@ class HistoryActivity : AppCompatActivity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
 
-        // מתג מקומי/שרת
+        // לשוניות
         val tabs = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(24, 20, 24, 8)
         }
-        val btnLocal = tabButton("מקומי (כולל עריכות)")
-        val btnServer = tabButton("שרת")
-        tabs.addView(btnLocal); tabs.addView(btnServer)
+        val btnLocal  = tabButton("מקומי (כולל עריכות)")
+        val btnServer = tabButton("שרת (כולל מחוקים)")
+        tabs.addView(btnLocal)
+        tabs.addView(btnServer)
         root.addView(tabs)
 
         container = LinearLayout(this).apply {
@@ -61,10 +63,13 @@ class HistoryActivity : AppCompatActivity() {
         }
         root.addView(NestedScrollView(this).apply {
             addView(container)
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT
+            )
         })
 
-        btnLocal.setOnClickListener { selectTab(btnLocal, btnServer); showLocal() }
+        btnLocal.setOnClickListener  { selectTab(btnLocal, btnServer); showLocal()  }
         btnServer.setOnClickListener { selectTab(btnServer, btnLocal); showServer() }
 
         selectTab(btnLocal, btnServer)
@@ -79,41 +84,61 @@ class HistoryActivity : AppCompatActivity() {
 
     private fun selectTab(active: Button, other: Button) {
         active.setBackgroundColor(primary); active.setTextColor(0xFF1F1C00.toInt())
-        other.setBackgroundColor(surface); other.setTextColor(onSurface)
+        other.setBackgroundColor(surface);  other.setTextColor(onSurface)
     }
 
-    // --- מקומי ---
+    // ── מקומי ──────────────────────────────────────────────────────────────
     private fun showLocal() {
         container.removeAllViews()
         val groups = HistoryStore(this).groupedByEvent()
         if (groups.isEmpty()) {
-            container.addView(emptyText("אין עדיין היסטוריה מקומית.\nהתיעוד מתחיל אוטומטית כשמגיעות התראות (אם מופעל בהגדרות)."))
+            container.addView(emptyText(
+                "אין עדיין היסטוריה מקומית.\n" +
+                "התיעוד מתחיל אוטומטית כשמגיעות התראות (אם מופעל בהגדרות)."
+            ))
             return
         }
         groups.forEach { container.addView(localCard(it)) }
     }
 
-    // --- שרת ---
+    // ── שרת ────────────────────────────────────────────────────────────────
+    // מנסה לטעון מהשרת → שומר במטמון → אם נכשל, טוען מהמטמון
     private fun showServer() {
         container.removeAllViews()
         val spinner = ProgressBar(this).apply {
-            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-            lp.gravity = Gravity.CENTER_HORIZONTAL; lp.topMargin = 60; layoutParams = lp
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.topMargin = 60 }
+            layoutParams = lp
             indeterminateTintList = android.content.res.ColorStateList.valueOf(primary)
         }
         container.addView(spinner)
         thread {
-            val result = runCatching { BlackAlertApi.fetchHistory() }
+            var fromCache = false
+            val events = try {
+                val fetched = BlackAlertApi.fetchHistory()
+                ServerStateCache.save(this, fetched)
+                fetched
+            } catch (e: Exception) {
+                fromCache = true
+                ServerStateCache.load(this)
+            }
+
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
                 container.removeAllViews()
-                result.onSuccess { events ->
-                    serverLoaded = true
-                    if (events.isEmpty()) { container.addView(emptyText("אין היסטוריה מהשרת.")); return@onSuccess }
-                    events.sortedByDescending { it.time }.take(150).forEach { container.addView(serverCard(it)) }
-                }.onFailure {
-                    container.addView(emptyText("שגיאה בטעינת היסטוריית השרת — בדוק חיבור.\n(${it.message ?: "שגיאה"})"))
+                if (fromCache) {
+                    container.addView(infoText("⚠ אין חיבור לשרת — מציג נתונים מהחיבור האחרון"))
                 }
+                if (events.isEmpty()) {
+                    container.addView(emptyText(
+                        if (fromCache) "אין נתונים שמורים מחיבור קודם."
+                        else "אין היסטוריה מהשרת."
+                    ))
+                    return@runOnUiThread
+                }
+                events.sortedByDescending { it.time }.forEach { container.addView(serverCard(it)) }
             }
         }
     }
@@ -122,27 +147,54 @@ class HistoryActivity : AppCompatActivity() {
         text = msg; setTextColor(onVar); setPadding(8, 50, 8, 0); textSize = 15f
     }
 
-    private fun card(): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(28, 22, 28, 22)
-        val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        lp.setMargins(0, 0, 0, 20); layoutParams = lp
-        background = android.graphics.drawable.GradientDrawable().apply {
-            setColor(surface); cornerRadius = 32f
+    private fun infoText(msg: String) = TextView(this).apply {
+        text = msg; setTextColor(0xFFFFAA00.toInt()); setPadding(8, 16, 8, 8); textSize = 13f
+    }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun card(eventType: Int = -1): LinearLayout {
+        val accentColor = when (eventType) {
+            3 -> 0xFFFF6B00.toInt(); 0, 2 -> primary; else -> 0xFF404150.toInt()
         }
+        val wrapper = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).also { it.setMargins(0, 0, 0, dp(12)) }
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(surface); cornerRadius = dp(18).toFloat()
+            }
+        }
+        wrapper.addView(android.view.View(this).apply {
+            setBackgroundColor(accentColor)
+            layoutParams = LinearLayout.LayoutParams(dp(4), LinearLayout.LayoutParams.MATCH_PARENT)
+        })
+        val inner = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            tag = wrapper
+        }
+        wrapper.addView(inner)
+        return inner
     }
 
     private fun typeLabel(t: Int) = when (t) {
         0 -> "נסיון מעצר מ.צ."; 2 -> "התרעת מחסומים"; 3 -> "נסיון הסגרה"; else -> "התראה"
     }
 
-    private fun typeColor(t: Int) = when (t) { 3 -> 0xFFFF8000.toInt(); 0, 2 -> primary; else -> 0xFFC9CBD6.toInt() }
+    private fun typeColor(t: Int) = when (t) {
+        3 -> 0xFFFF8000.toInt(); 0, 2 -> primary; else -> 0xFFC9CBD6.toInt()
+    }
 
     private fun header(c: LinearLayout, ev: AlertEvent) {
         val cityNames = ev.cities.joinToString(", ") { repo.cityByKey(it)?.he ?: it }
         c.addView(TextView(this).apply {
             text = "${typeLabel(ev.eventType)} — $cityNames"; textSize = 17f
-            setTextColor(typeColor(ev.eventType)); setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(typeColor(ev.eventType))
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
         })
         c.addView(TextView(this).apply {
             text = DateUtils.getRelativeTimeSpanString(ev.time * 1000).toString() +
@@ -151,11 +203,8 @@ class HistoryActivity : AppCompatActivity() {
         })
     }
 
-    /** פותח את מסך הפרטים המלא (תצוגה בלבד — בלי צלצול) עם מפה וניווט. */
     private fun openDetail(ev: AlertEvent) {
         val cityNames = ev.cities.joinToString(", ") { repo.cityByKey(it)?.he ?: it }
-        val title = typeLabel(ev.eventType)
-        // מיקום: מהאירוע, אחרת מרכז-העיר הראשונה
         var lat = ev.lat; var lng = ev.lng
         if (lat == null || lng == null) {
             ev.cities.firstNotNullOfOrNull { repo.cityByKey(it) }?.let { lat = it.lat; lng = it.lng }
@@ -163,7 +212,7 @@ class HistoryActivity : AppCompatActivity() {
         val i = android.content.Intent(this, AlertActivity::class.java).apply {
             putExtra(AlertActivity.EXTRA_VIEW_ONLY, true)
             putExtra(AlertActivity.EXTRA_WITH_SOUND, false)
-            putExtra(AlertActivity.EXTRA_TITLE, title)
+            putExtra(AlertActivity.EXTRA_TITLE, typeLabel(ev.eventType))
             putExtra(AlertActivity.EXTRA_CITIES, cityNames)
             putExtra(AlertActivity.EXTRA_ADDRESS, ev.address)
             putExtra(AlertActivity.EXTRA_NOTE, ev.note)
@@ -178,13 +227,16 @@ class HistoryActivity : AppCompatActivity() {
     }
 
     private fun localCard(g: EventHistory): View {
-        val c = card(); header(c, g.latest)
-        c.setOnClickListener { openDetail(g.latest) }
+        val c = card(g.latest.eventType); header(c, g.latest)
+        (c.tag as? android.view.View)?.setOnClickListener { openDetail(g.latest) }
+            ?: c.setOnClickListener { openDetail(g.latest) }
         val badges = buildString {
             if (g.wasEdited) append("✏ נערך ${g.versions.size} פעמים   ")
             if (g.wasClosed) append("✓ הסתיים")
         }
-        if (badges.isNotBlank()) c.addView(TextView(this).apply { text = badges; setTextColor(onVar); textSize = 12f })
+        if (badges.isNotBlank()) c.addView(TextView(this).apply {
+            text = badges; setTextColor(onVar); textSize = 12f
+        })
         g.versions.forEach { v ->
             if (v.note.isBlank() && !v.isClosed) return@forEach
             c.addView(TextView(this).apply {
@@ -193,17 +245,18 @@ class HistoryActivity : AppCompatActivity() {
                 setPadding(16, 8, 0, 0); textSize = 14f; setTextColor(onSurface)
             })
         }
-        return c
+        return (c.tag as? android.view.View) ?: c
     }
 
     private fun serverCard(ev: AlertEvent): View {
-        val c = card(); header(c, ev)
-        c.setOnClickListener { openDetail(ev) }
+        val c = card(ev.eventType); header(c, ev)
+        (c.tag as? android.view.View)?.setOnClickListener { openDetail(ev) }
+            ?: c.setOnClickListener { openDetail(ev) }
         if (ev.note.isNotBlank()) c.addView(TextView(this).apply {
             text = ev.note; setPadding(0, 6, 0, 0); textSize = 14f; setTextColor(onSurface)
             setLineSpacing(0f, 1.3f)
         })
-        return c
+        return (c.tag as? android.view.View) ?: c
     }
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }

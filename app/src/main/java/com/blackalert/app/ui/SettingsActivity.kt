@@ -34,7 +34,7 @@ class SettingsActivity : AppCompatActivity() {
         3 to "נסיון הסגרה",
         8 to "התראה כללית"
     )
-    private val sounds = listOf("bell2", "bell", "ding", "alarm", "siren", "phone")
+    private val sounds = listOf("custom_alert", "bell2", "bell", "ding", "alarm", "siren", "phone")
 
     // שתי אפשרויות מסירה פשוטות בלבד
     private val deliveryModes = listOf(
@@ -71,7 +71,8 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // צליל (raw מצורף). בחירה מהספינר מבטלת צליל מותאם.
-        binding.soundSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, sounds)
+        val soundLabels = sounds.map { when(it) { "custom_alert" -> "התראה (ברירת מחדל)"; "bell2" -> "פעמון 2"; "bell" -> "פעמון"; "ding" -> "דינג"; "alarm" -> "אזעקה"; "siren" -> "סירנה"; "phone" -> "טלפון"; else -> it } }
+        binding.soundSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, soundLabels)
         binding.soundSpinner.setSelection(sounds.indexOf(prefs.soundName).coerceAtLeast(0))
         binding.soundSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: android.widget.AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) {
@@ -199,6 +200,77 @@ class SettingsActivity : AppCompatActivity() {
             val mode = com.blackalert.app.service.PushManager.effectiveMode(this)
             android.widget.Toast.makeText(this, "MQTT נשמר · ערוץ פעיל: $mode", android.widget.Toast.LENGTH_SHORT).show()
         }
+
+        // כללי: בדיקה, סוללה, אודות
+        binding.btnTest.setOnClickListener { showTestOptions() }
+        binding.btnAbout.setOnClickListener { showAbout() }
+        binding.btnBattery.setOnClickListener { requestIgnoreBatteryOptimizations() }
+        refreshBatteryButton()
+    }
+
+    private fun refreshBatteryButton() {
+        binding.btnBattery.visibility = if (isIgnoringBattery()) android.view.View.GONE else android.view.View.VISIBLE
+    }
+
+    private fun isIgnoringBattery(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        return pm.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    private fun requestIgnoreBatteryOptimizations() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        runCatching {
+            startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+        }.onFailure {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        }
+    }
+
+    private fun showTestOptions() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("בדיקת התראה")
+            .setMessage("כדי לראות את מסך ההתראה המלא — בחר \"בעוד 10 שניות\", נעל/כבה את המסך, והמתן.")
+            .setPositiveButton("עכשיו") { _, _ -> fireTestAlert() }
+            .setNeutralButton("בעוד 10 שניות") { _, _ ->
+                android.widget.Toast.makeText(this, "נעל את המסך — הבדיקה תופיע בעוד 10 שניות", android.widget.Toast.LENGTH_LONG).show()
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ fireTestAlert() }, 10_000)
+            }
+            .setNegativeButton("ביטול", null)
+            .show()
+    }
+
+    private fun fireTestAlert() {
+        val now = System.currentTimeMillis() / 1000
+        val test = com.blackalert.app.data.AlertEvent(
+            notificationId = "test-$now", cities = listOf("בני ברק"), eventType = 3,
+            time = now, expireAt = now + 120, version = 1, status = null, silent = false,
+            isDrill = false, note = "התראת בדיקה — לחיצה על 'נווט' תפתח את בורר אפליקציות הניווט.",
+            address = "רחוב רבי עקיבא", lat = 32.0874, lng = 34.8324
+        )
+        com.blackalert.app.util.NotificationHelper(this).showAlert(
+            test, withSound = true,
+            target = com.blackalert.app.service.NavTarget(32.0874, 34.8324, "בני ברק, רחוב רבי עקיבא"), prefs = prefs
+        )
+    }
+
+    private fun showAbout() {
+        val v = com.blackalert.app.BuildConfig.VERSION_NAME
+        val msg = android.text.Html.fromHtml(
+            "<b>צבע שחור</b> — גרסה $v<br><br>" +
+            "<b>דיווחים</b> - מערכת צבע שחור<br>טלפון <a href=\"tel:0738881241\">0738881241</a><br><br>" +
+            "<b>פיתוח</b> - <a href=\"https://github.com/613avi\">github.com/613avi</a><br><br>" +
+            "<b>תרומה לפיתוח</b> - חברונר מועד ב<br><br>" +
+            "<small>הדיווחים נלקחים ממערכת \"צבע שחור\". היישום עצמאי ואינו מתופעל על ידה.</small>",
+            android.text.Html.FROM_HTML_MODE_COMPACT
+        )
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("אודות")
+            .setMessage(msg)
+            .setPositiveButton("סגור", null)
+            .show()
+        (dialog.findViewById<android.widget.TextView>(android.R.id.message))?.movementMethod =
+            android.text.method.LinkMovementMethod.getInstance()
     }
 
     private fun openRingtonePicker() {
