@@ -51,7 +51,7 @@ async function fetchAllEvents() {
   let allEvents = [];
   for (const url of SOURCE_URLS) {
     try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      const r = await fetch(url, { signal: AbortSignal.timeout(20000) });
       if (r.ok) {
         const j = await r.json();
         if (Array.isArray(j)) allEvents = allEvents.concat(j);

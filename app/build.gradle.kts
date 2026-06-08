@@ -15,12 +15,28 @@ android {
         versionName = "1.3.2"
     }
 
+    signingConfigs {
+        create("release") {
+            val ksPath = System.getenv("KEYSTORE_PATH")
+            val ksPass = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            if (ksPath != null) {
+                storeFile = file(ksPath)
+                storePassword = ksPass
+                keyAlias = "black-alert"
+                keyPassword = ksPass
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.getByName(
+                if (System.getenv("KEYSTORE_PATH") != null) "release" else "debug"
             )
         }
         debug {

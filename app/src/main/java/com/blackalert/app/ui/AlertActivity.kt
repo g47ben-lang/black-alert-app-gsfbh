@@ -2,29 +2,24 @@ package com.blackalert.app.ui
 
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import com.blackalert.app.R
 import com.blackalert.app.data.Prefs
 import com.blackalert.app.databinding.ActivityAlertBinding
 import com.blackalert.app.service.NavTarget
+import com.blackalert.app.util.AlertRinger
 import com.blackalert.app.util.NavigationLauncher
 
 /**
  * מסך ההתראה במסך מלא — נפתח דרך full-screen intent, מוצג מעל המסך הנעול ומדליק את המסך.
- * מצלצל בלולאה עד שהמשתמש מגיב, ומציע ניווט ליעד דרך בורר אפליקציות הניווט.
+ * מצלצל בלולאה (דרך AlertRinger) עד שהמשתמש מגיב, ומציע ניווט ליעד.
  */
 class AlertActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAlertBinding
-    private var player: MediaPlayer? = null
-    private var vibrator: Vibrator? = null
     private var target: NavTarget? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,11 +33,17 @@ class AlertActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        stopRinging()
+        AlertRinger.stop()
         bind(intent)
     }
 
     private fun bind(intent: Intent) {
+        // כשמסך ההתראה המלא מוצג — אין צורך בהתראה כפולה בווילון; מבטלים אותה.
+        val notifId = intent.getIntExtra(EXTRA_NOTIF_ID, -1)
+        if (notifId != -1) {
+            (getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager).cancel(notifId)
+        }
+
         val title = intent.getStringExtra(EXTRA_TITLE) ?: getString(R.string.event_type_8)
         val cities = intent.getStringExtra(EXTRA_CITIES) ?: ""
         val address = intent.getStringExtra(EXTRA_ADDRESS) ?: ""
@@ -75,10 +76,21 @@ class AlertActivity : AppCompatActivity() {
         binding.btnNavigate.setOnClickListener {
             target?.let {
                 NavigationLauncher.launch(this, it)   // Waze כברירת מחדל, נפילה ל-geo:
-                stopRinging(); finish()
+                AlertRinger.stop(); finish()
             }
         }
-        binding.btnClose.setOnClickListener { stopRinging(); finish() }
+        // "השתקה" — עוצר צפצוף+רטט אך משאיר את ההתראה גלויה (המשתמש עדיין רואה את הפרטים והמפה).
+        binding.btnMute.text = getString(R.string.action_mute)   // איפוס למצב התראה חדשה (onNewIntent)
+        binding.btnMute.isEnabled = true
+        binding.btnMute.alpha = 1f
+        binding.btnMute.setOnClickListener {
+            AlertRinger.stop()
+            binding.btnMute.text = getString(R.string.action_muted)
+            binding.btnMute.isEnabled = false
+            binding.btnMute.alpha = 0.5f
+        }
+        // X בפינה העליונה — סגירת המסך לגמרי.
+        binding.btnCloseTop.setOnClickListener { AlertRinger.stop(); finish() }
 
         binding.btnArrived.visibility = if (viewOnly) android.view.View.GONE else android.view.View.VISIBLE
         binding.btnArrived.setOnClickListener { reportArrival(title, cities, address) }
@@ -165,47 +177,8 @@ class AlertActivity : AppCompatActivity() {
     private fun startAlerting(audible: Boolean, live: Boolean) {
         // live=false (צפייה בהיסטוריה) → ללא רטט/צליל בכלל
         if (!live) return
-        val prefs = Prefs(this)
-        // רטט אם מופעל רטט או רטט-בלבד; צליל רק אם audible (כבר מנוכה רטט-בלבד/שקט)
-        if (prefs.vibrate || prefs.vibrateOnly) startVibration()
-        if (audible) startSound(prefs)
-        // עצירה אוטומטית אחרי 60ש' אם המשתמש לא הגיב
-        binding.root.postDelayed({ stopRinging() }, 60_000)
-    }
-
-    private fun startSound(prefs: Prefs) {
-        val uri = com.blackalert.app.util.NotificationHelper(this).soundUri(prefs)
-        runCatching {
-            player = MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                setDataSource(this@AlertActivity, uri)
-                isLooping = true
-                prepare()
-                start()
-            }
-        }
-    }
-
-    private fun startVibration() {
-        vibrator = (getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)
-        val pattern = longArrayOf(0, 600, 400, 600, 400)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
-        } else {
-            @Suppress("DEPRECATION") vibrator?.vibrate(pattern, 0)
-        }
-    }
-
-    private fun stopRinging() {
-        runCatching { player?.stop(); player?.release() }
-        player = null
-        vibrator?.cancel()
-        vibrator = null
+        // הצליל+רטט דרך AlertRinger המרכזי — כך שכל סגירה/השתקה/ניווט (גם מההתראה) משתיקים מיד.
+        AlertRinger.start(this, Prefs(this), audible)
     }
 
     private fun reportArrival(title: String, cities: String, address: String) {
@@ -238,7 +211,7 @@ class AlertActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        stopRinging()
+        AlertRinger.stop()
         super.onDestroy()
     }
 
@@ -250,6 +223,7 @@ class AlertActivity : AppCompatActivity() {
         const val EXTRA_EVENT_TYPE = "eventType"
         const val EXTRA_WITH_SOUND = "withSound"
         const val EXTRA_VIEW_ONLY = "viewOnly"
+        const val EXTRA_NOTIF_ID = "notifId"
         const val EXTRA_LAT = "lat"
         const val EXTRA_LNG = "lng"
         const val EXTRA_LABEL = "label"

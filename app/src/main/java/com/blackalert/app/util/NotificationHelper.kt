@@ -1,14 +1,18 @@
 package com.blackalert.app.util
 
+import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.blackalert.app.R
 import com.blackalert.app.data.AlertEvent
@@ -42,7 +46,8 @@ class NotificationHelper(private val context: Context) {
             .setContentText(text)
             .setOngoing(true)
             .setContentIntent(pi)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setSilent(true)
             .build()
     }
 
@@ -74,6 +79,7 @@ class NotificationHelper(private val context: Context) {
             putExtra(AlertActivity.EXTRA_NOTE, event.note)
             putExtra(AlertActivity.EXTRA_EVENT_TYPE, event.eventType)
             putExtra(AlertActivity.EXTRA_WITH_SOUND, audible)
+            putExtra(AlertActivity.EXTRA_NOTIF_ID, notifId)
             target?.let {
                 putExtra(AlertActivity.EXTRA_LAT, it.lat)
                 putExtra(AlertActivity.EXTRA_LNG, it.lng)
@@ -101,13 +107,25 @@ class NotificationHelper(private val context: Context) {
             )
         } else null
 
-        // בנייה+פרסום. onlyAlertOnce → עדכון (זמני הגעה) לא מצלצל שוב. fullScreen רק בפרסום הראשון.
-        fun post(bodyText: String, collapsed: String, withFullScreen: Boolean) {
+        // כפתור "התעלם" — מבטל את ההתראה. requestCode נפרד (notifId xor) כדי לא להתנגש ב-navPi.
+        val dismissPi: PendingIntent = run {
+            val dismissIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+                action = NotificationActionReceiver.ACTION_DISMISS
+                putExtra(NotificationActionReceiver.EXTRA_NOTIF_ID, notifId)
+            }
+            PendingIntent.getBroadcast(
+                context, notifId xor 0x44, dismissIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        }
+
+        // בנייה+פרסום. onlyAlertOnce → עדכון (מפה/זמני הגעה) לא מצלצל שוב. fullScreen רק בפרסום הראשון.
+        // mapBitmap != null → תצוגת BigPicture עם מפה; אחרת BigText.
+        fun post(bodyText: String, collapsed: String, withFullScreen: Boolean, mapBitmap: Bitmap?) {
             val b = NotificationCompat.Builder(context, channel)
                 .setSmallIcon(R.drawable.ic_alert)
                 .setContentTitle(title)
                 .setContentText(collapsed)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(bodyText))
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -115,17 +133,45 @@ class NotificationHelper(private val context: Context) {
                 .setOnlyAlertOnce(true)
                 .setContentIntent(fullScreenPi)
                 .setColor(0xFFD32F2F.toInt())
-            if (withFullScreen && prefs.fullScreenAlert) b.setFullScreenIntent(fullScreenPi, true)
+            if (event.cities.size > 1) b.setSubText("${event.cities.size} יישובים")
+            if (mapBitmap != null) {
+                b.setLargeIcon(mapBitmap)
+                b.setStyle(
+                    NotificationCompat.BigPictureStyle()
+                        .bigPicture(mapBitmap)
+                        .bigLargeIcon(null as Bitmap?)   // לא לכפול את התמונה כשמורחב
+                        .setBigContentTitle(title)
+                        .setSummaryText(bodyText)
+                )
+            } else {
+                b.setStyle(NotificationCompat.BigTextStyle().bigText(bodyText))
+            }
             if (navPi != null) b.addAction(R.drawable.ic_navigate, context.getString(R.string.action_navigate), navPi)
+            b.addAction(R.drawable.ic_close, context.getString(R.string.action_close), dismissPi)
+            b.setDeleteIntent(dismissPi)   // החלקה להסרת ההתראה → משתיק גם את הצליל
+            if (withFullScreen && prefs.fullScreenAlert) b.setFullScreenIntent(fullScreenPi, true)
             nm.notify(notifId, b.build())
         }
 
-        post(baseBody, cityNames, withFullScreen = true)
+        post(baseBody, cityNames, withFullScreen = true, mapBitmap = null)
 
-        // העשרה אסינכרונית בזמני הגעה ממיקום המשתמש (לא מעכב את ההתראה; לא מצלצל שוב)
-        if (prefs.travelTimesEnabled && target != null) {
-            val fix = com.blackalert.app.service.LocationProvider.best(context)
-            if (fix != null) Thread {
+        // הצליל+רטט מנוגנים ע"י האפליקציה (לא ע"י ערוץ ההתראה) כדי שכל סגירה/השתקה תעצור אותם.
+        AlertRinger.start(context, prefs, audible)
+
+        // כפיית מסך-מלא גם כשהמכשיר בשימוש פעיל (אנדרואיד מציג full-screen-intent כבאנר בלבד אז).
+        if (prefs.fullScreenAlert && prefs.forceFullScreen && canForceFullScreen()) {
+            runCatching { context.startActivity(fullScreenIntent) }
+        }
+
+        // העשרה אסינכרונית: מפה סטטית בבאנר + זמני הגעה ממיקום המשתמש. לא מעכב, לא מצלצל שוב.
+        val wantMap = prefs.mapInNotification && target != null
+        val wantTravel = prefs.travelTimesEnabled && target != null
+        if (target != null && (wantMap || wantTravel)) Thread {
+            val map = if (wantMap) StaticMap.build(target.lat, target.lng, event.eventType) else null
+            val fix = if (wantTravel) com.blackalert.app.service.LocationProvider.best(context) else null
+            var body = baseBody
+            var collapsed = cityNames
+            if (fix != null) {
                 val info = com.blackalert.app.util.TravelTime.compute(fix.lat, fix.lng, target.lat, target.lng)
                 fun m(v: Int) = if (v < 0) "—" else "$v"
                 // נסיעה תמיד; הליכה/אופניים רק אם פחות מחצי שעה (קרוב).
@@ -133,9 +179,21 @@ class NotificationHelper(private val context: Context) {
                 if (info.showWalk) sub.add("🚶 ${info.walkMin} דק' הליכה")
                 if (info.showBike) sub.add("🛴 ${info.bikeMin} דק' אופניים/קורקינט")
                 val travel = "🚗 ${m(info.driveMin)} דק' נסיעה ממיקומך" + if (sub.isEmpty()) "" else "\n" + sub.joinToString(" · ")
-                post(baseBody + "\n" + travel, "$cityNames · 🚗 ${m(info.driveMin)} דק' נסיעה", withFullScreen = false)
-            }.start()
-        }
+                body = "$baseBody\n$travel"
+                collapsed = "$cityNames · 🚗 ${m(info.driveMin)} דק' נסיעה"
+            }
+            // נפרסם מחדש רק אם יש מה להוסיף (מפה או זמני נסיעה)
+            if (map != null || fix != null) post(body, collapsed, withFullScreen = false, mapBitmap = map)
+        }.start()
+    }
+
+    /** האם מותר ובכלל צריך לכפות מסך-מלא: רק כשהמסך דולק ולא נעול, ויש הרשאת הצגה-מעל. */
+    private fun canForceFullScreen(): Boolean {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val km = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        val inUse = pm.isInteractive && !km.isKeyguardLocked
+        // כשהמסך כבוי/נעול — full-screen-intent כבר מטפל בזה; כופים רק במצב שימוש פעיל.
+        return inUse && Settings.canDrawOverlays(context)
     }
 
     fun cancelAlert(event: AlertEvent) {
@@ -181,46 +239,35 @@ class NotificationHelper(private val context: Context) {
     private fun ensureForegroundChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         if (nm.getNotificationChannel(CH_FOREGROUND) == null) {
-            val ch = NotificationChannel(CH_FOREGROUND, context.getString(R.string.ch_foreground), NotificationManager.IMPORTANCE_LOW)
+            val ch = NotificationChannel(CH_FOREGROUND, context.getString(R.string.ch_foreground), NotificationManager.IMPORTANCE_MIN)
             ch.setShowBadge(false)
             nm.createNotificationChannel(ch)
         }
     }
 
     /**
-     * ערוצי ההתראה נבנים מחדש כשמשהו ב"חתימה" משתנה (צליל/רטט/רטט-בלבד/עקיפת-DND),
-     * כי אנדרואיד לא מאפשר לשנות מאפייני ערוץ קיים. בקרת ה-DND דורשת גישת מדיניות התראות.
+     * ערוצי ההתראה — *שקטים* מבחינת המערכת (ללא צליל וללא רטט): הצליל והרטט מנוגנים ע"י
+     * AlertRinger כדי שניתן יהיה לעצור אותם ("סגור"/"השתקה"/"נווט"). הערוץ נשאר IMPORTANCE_HIGH
+     * כדי להציג heads-up. בקרת ה-DND דורשת גישת מדיניות התראות.
      */
     private fun ensureAlertChannels(prefs: Prefs) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val vibrate = prefs.vibrate || prefs.vibrateOnly
         val dndOk = prefs.overrideDnd && nm.isNotificationPolicyAccessGranted
-        val soundKey = if (prefs.soundName == "custom") "custom:${prefs.customSoundUri}" else prefs.soundName
-        val sig = "$soundKey|v=$vibrate|dnd=$dndOk|vo=${prefs.vibrateOnly}"
+        val sig = "silent|dnd=$dndOk"
         val store = context.getSharedPreferences("ba_channel", Context.MODE_PRIVATE)
         val changed = store.getString("sig", null) != sig
 
-        if (changed || nm.getNotificationChannel(CH_ALERT_SILENT) == null) {
-            nm.deleteNotificationChannel(CH_ALERT_SILENT)
-            val ch = NotificationChannel(CH_ALERT_SILENT, context.getString(R.string.ch_alert_silent), NotificationManager.IMPORTANCE_HIGH)
-            ch.setSound(null, null)
-            ch.enableVibration(vibrate)
-            ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            if (dndOk) ch.setBypassDnd(true)
-            nm.createNotificationChannel(ch)
-        }
-        if (changed || nm.getNotificationChannel(CH_ALERT_SOUND) == null) {
-            nm.deleteNotificationChannel(CH_ALERT_SOUND)
-            val attrs = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-            val ch = NotificationChannel(CH_ALERT_SOUND, context.getString(R.string.ch_alert_sound), NotificationManager.IMPORTANCE_HIGH)
-            ch.setSound(soundUri(prefs), attrs)
-            ch.enableVibration(prefs.vibrate)
-            ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            if (dndOk) ch.setBypassDnd(true)
-            nm.createNotificationChannel(ch)
+        for (id in listOf(CH_ALERT_SILENT, CH_ALERT_SOUND)) {
+            if (changed || nm.getNotificationChannel(id) == null) {
+                nm.deleteNotificationChannel(id)
+                val name = if (id == CH_ALERT_SOUND) R.string.ch_alert_sound else R.string.ch_alert_silent
+                val ch = NotificationChannel(id, context.getString(name), NotificationManager.IMPORTANCE_HIGH)
+                ch.setSound(null, null)          // הצליל מנוגן ע"י AlertRinger, לא ע"י הערוץ
+                ch.enableVibration(false)        // הרטט מנוגן ע"י AlertRinger
+                ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                if (dndOk) ch.setBypassDnd(true)
+                nm.createNotificationChannel(ch)
+            }
         }
         if (changed) store.edit().putString("sig", sig).apply()
     }

@@ -21,6 +21,8 @@
     <!-- actions -->
     <string name="action_navigate">נווט</string>
     <string name="action_close">סגור</string>
+    <string name="action_mute">השתקה</string>
+    <string name="action_muted">מושתק</string>
 
     <!-- main -->
     <string name="main_service_switch">שירות ההתראות פעיל</string>
@@ -36,6 +38,9 @@
     <string name="set_sound">צליל התראה</string>
     <string name="set_vibrate">רטט</string>
     <string name="set_fullscreen">חלון מסך-מלא (מדליק מסך גם נעול)</string>
+    <string name="set_force_fullscreen">פתח מסך מלא גם בזמן שימוש פעיל</string>
+    <string name="set_force_fullscreen_desc">גם כשהמסך דולק ובשימוש — פתח את מסך ההתראה המלא במקום באנר בלבד (דורש הרשאת \"הצגה מעל אפליקציות אחרות\")</string>
+    <string name="set_map_in_notification">הצג מפה בתוך באנר ההתראה</string>
     <string name="set_silent_not_selected">הצג גם אזורים שלא נבחרו (ללא צליל)</string>
     <string name="set_local_history">שמירת היסטוריה מקומית (כולל עריכות)</string>
     <string name="set_proximity">התראה לפי קרבה (GPS)</string>

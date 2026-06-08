@@ -54,7 +54,12 @@ class AlertProcessor(context: Context) {
         val selCities = prefs.selectedCityIds
         val selAreas = prefs.selectedAreaIds
         val selTypes = prefs.selectedEventTypes
-        val selectAll = selCities.isEmpty() && selAreas.isEmpty()
+        // "כל הארץ": אין בחירה כלל — או שהמשתמש סימן את *כל* האזורים הזמינים
+        // (כפתור "סמן הכל" מאחסן את כל מזהי האזורים). בלי זה, אירוע בעיר שאינה
+        // במאגר המקומי / ללא מיפוי אזור היה נופל למרות ש"כל האזורים" מסומנים.
+        val allAreaIds = cities.areas.keys
+        val pickedAllAreas = allAreaIds.isNotEmpty() && selAreas.containsAll(allAreaIds)
+        val selectAll = (selCities.isEmpty() && selAreas.isEmpty()) || pickedAllAreas
 
         if (selTypes.isNotEmpty() && !selTypes.contains(event.eventType)) return AlertDecision.Ignore
 

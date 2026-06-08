@@ -22,7 +22,6 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    # בודק אם סוד החתימה קיים — מגדיר פלט לשלבים הבאים
     - name: Detect signing secrets
       id: signing
       run: |

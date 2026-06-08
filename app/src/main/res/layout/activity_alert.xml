@@ -6,14 +6,16 @@
     android:background="@color/bg"
     android:layoutDirection="rtl">
 
-    <!-- ראש: לוגו + סוג אירוע + מיקום -->
+    <!-- ראש: לוגו + סוג אירוע + מיקום + X לסגירה -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:background="@color/surface"
-        android:padding="16dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp"
+        android:paddingVertical="12dp">
 
         <ImageView
             android:id="@+id/logo"
@@ -53,6 +55,17 @@
                 android:textColor="@color/on_surface_var"
                 android:textSize="14sp" />
         </LinearLayout>
+
+        <!-- X קטן לסגירת המסך (בפינה העליונה) -->
+        <ImageButton
+            android:id="@+id/btnCloseTop"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="top"
+            android:src="@drawable/ic_close"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="@color/on_surface_var"
+            android:contentDescription="@string/action_close" />
     </LinearLayout>
 
     <!-- הערת החמ"ל -->
@@ -152,14 +165,19 @@
             xmlns:app="http://schemas.android.com/apk/res-auto" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnClose"
+            android:id="@+id/btnMute"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="58dp"
             android:layout_marginTop="10dp"
-            android:text="@string/action_close"
+            android:text="@string/action_mute"
             android:textColor="@color/on_surface"
-            android:textSize="17sp" />
+            android:textSize="19sp"
+            android:textStyle="bold"
+            app:icon="@drawable/ic_mute"
+            app:iconTint="@color/on_surface"
+            app:iconGravity="textStart"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
     </LinearLayout>
 
 </LinearLayout>
