@@ -46,7 +46,6 @@ class MainActivity : AppCompatActivity() {
         binding.btnSettings.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         binding.btnHistory.setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
         binding.btnCallExtradition.setOnClickListener { confirmCallExtradition() }
-        binding.btnCallMain.setOnClickListener { confirmCallMain() }
         binding.btnEmergencyContacts.setOnClickListener { startActivity(Intent(this, EmergencyContactsActivity::class.java)) }
 
         requestNotificationPermission()
@@ -221,20 +220,6 @@ class MainActivity : AppCompatActivity() {
                 "השלוחה תישלח אוטומטית לאחר המענה.\n\nלחייג עכשיו?"
             )
             .setPositiveButton("📞 חייג") { _, _ -> com.blackalert.app.util.ReportArrest.call(this) }
-            .setNegativeButton("ביטול", null)
-            .show()
-    }
-
-    private fun confirmCallMain() {
-        val number = com.blackalert.app.util.ReportArrest.NUMBER
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("📞 מוקד ראשי")
-            .setMessage("פעולה זו תחייג למוקד \"צבע שחור\" בשלוחה ראשית.\n\nמספר: $number\n\nלחייג עכשיו?")
-            .setPositiveButton("📞 חייג") { _, _ ->
-                runCatching {
-                    startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
-                }
-            }
             .setNegativeButton("ביטול", null)
             .show()
     }

@@ -84,25 +84,12 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCallExtradition"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="72dp"
                 android:backgroundTint="#FFD32F2F"
                 android:textColor="@color/white"
-                android:textSize="17sp"
+                android:textSize="19sp"
                 android:textStyle="bold"
-                android:text="חייג לדווח על הסגרה"
-                android:letterSpacing="0.01"
-                app:cornerRadius="16dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnCallMain"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_marginTop="12dp"
-                android:backgroundTint="#FF1565C0"
-                android:textColor="@color/white"
-                android:textSize="17sp"
-                android:textStyle="bold"
-                android:text="חייג למוקד בשלוחה ראשית"
+                android:text="דיווח על הסגרה — חייגן"
                 android:letterSpacing="0.01"
                 app:cornerRadius="16dp" />
 

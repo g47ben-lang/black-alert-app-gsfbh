@@ -151,17 +151,34 @@ class HistoryActivity : AppCompatActivity() {
         text = msg; setTextColor(0xFFFFAA00.toInt()); setPadding(8, 16, 8, 8); textSize = 13f
     }
 
-    private fun card(): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(28, 22, 28, 22)
-        val lp = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).also { it.setMargins(0, 0, 0, 20) }
-        layoutParams = lp
-        background = android.graphics.drawable.GradientDrawable().apply {
-            setColor(surface); cornerRadius = 32f
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun card(eventType: Int = -1): LinearLayout {
+        val accentColor = when (eventType) {
+            3 -> 0xFFFF6B00.toInt(); 0, 2 -> primary; else -> 0xFF404150.toInt()
         }
+        val wrapper = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).also { it.setMargins(0, 0, 0, dp(12)) }
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(surface); cornerRadius = dp(18).toFloat()
+            }
+        }
+        wrapper.addView(android.view.View(this).apply {
+            setBackgroundColor(accentColor)
+            layoutParams = LinearLayout.LayoutParams(dp(4), LinearLayout.LayoutParams.MATCH_PARENT)
+        })
+        val inner = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            tag = wrapper
+        }
+        wrapper.addView(inner)
+        return inner
     }
 
     private fun typeLabel(t: Int) = when (t) {
@@ -210,8 +227,9 @@ class HistoryActivity : AppCompatActivity() {
     }
 
     private fun localCard(g: EventHistory): View {
-        val c = card(); header(c, g.latest)
-        c.setOnClickListener { openDetail(g.latest) }
+        val c = card(g.latest.eventType); header(c, g.latest)
+        (c.tag as? android.view.View)?.setOnClickListener { openDetail(g.latest) }
+            ?: c.setOnClickListener { openDetail(g.latest) }
         val badges = buildString {
             if (g.wasEdited) append("✏ נערך ${g.versions.size} פעמים   ")
             if (g.wasClosed) append("✓ הסתיים")
@@ -227,17 +245,18 @@ class HistoryActivity : AppCompatActivity() {
                 setPadding(16, 8, 0, 0); textSize = 14f; setTextColor(onSurface)
             })
         }
-        return c
+        return (c.tag as? android.view.View) ?: c
     }
 
     private fun serverCard(ev: AlertEvent): View {
-        val c = card(); header(c, ev)
-        c.setOnClickListener { openDetail(ev) }
+        val c = card(ev.eventType); header(c, ev)
+        (c.tag as? android.view.View)?.setOnClickListener { openDetail(ev) }
+            ?: c.setOnClickListener { openDetail(ev) }
         if (ev.note.isNotBlank()) c.addView(TextView(this).apply {
             text = ev.note; setPadding(0, 6, 0, 0); textSize = 14f; setTextColor(onSurface)
             setLineSpacing(0f, 1.3f)
         })
-        return c
+        return (c.tag as? android.view.View) ?: c
     }
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
