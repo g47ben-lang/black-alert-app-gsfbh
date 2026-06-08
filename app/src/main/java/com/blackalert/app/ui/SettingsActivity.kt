@@ -99,6 +99,15 @@ class SettingsActivity : AppCompatActivity() {
         binding.switchFullscreen.isChecked = prefs.fullScreenAlert
         binding.switchFullscreen.setOnCheckedChangeListener { _, c -> prefs.fullScreenAlert = c }
 
+        binding.switchForceFullscreen.isChecked = prefs.forceFullScreen
+        binding.switchForceFullscreen.setOnCheckedChangeListener { _, c ->
+            prefs.forceFullScreen = c
+            if (c) requestOverlayPermissionIfNeeded()
+        }
+
+        binding.switchMapInNotification.isChecked = prefs.mapInNotification
+        binding.switchMapInNotification.setOnCheckedChangeListener { _, c -> prefs.mapInNotification = c }
+
         binding.switchSilentNotSelected.isChecked = prefs.silentNotSelected
         binding.switchSilentNotSelected.setOnCheckedChangeListener { _, c -> prefs.silentNotSelected = c }
 
@@ -342,6 +351,18 @@ class SettingsActivity : AppCompatActivity() {
             }
             .setNegativeButton("אחר כך", null)
             .show()
+    }
+
+    /** הרשאת "הצגה מעל אפליקציות אחרות" — נדרשת כדי לכפות מסך מלא בזמן שימוש פעיל. */
+    private fun requestOverlayPermissionIfNeeded() {
+        if (!Settings.canDrawOverlays(this)) {
+            android.widget.Toast.makeText(this, "אשר 'הצגה מעל אפליקציות אחרות' כדי לפתוח מסך מלא בזמן שימוש", android.widget.Toast.LENGTH_LONG).show()
+            runCatching {
+                startActivity(
+                    Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+                )
+            }
+        }
     }
 
     private fun requestDndAccessIfNeeded() {
