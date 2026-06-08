@@ -59,7 +59,7 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <!-- כרטיס דיווח מעצר -->
+        <!-- כפתורי חיוג -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -68,33 +68,31 @@
             android:paddingTop="16dp">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnReport"
+                android:id="@+id/btnCallExtradition"
                 android:layout_width="match_parent"
                 android:layout_height="60dp"
                 android:backgroundTint="#FFD32F2F"
                 android:textColor="@color/white"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:text="🚨 דיווח על מעצר"
-                app:cornerRadius="14dp"
-                app:icon="@android:drawable/ic_menu_call"
-                app:iconTint="@color/white"
-                app:iconGravity="textEnd" />
+                android:text="🚨 חייג לדווח על הסגרה"
+                app:cornerRadius="14dp" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnBattery"
+                android:id="@+id/btnCallMain"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="60dp"
                 android:layout_marginTop="10dp"
-                android:backgroundTint="@color/surface_2"
-                android:textColor="@color/primary"
-                android:text="@string/main_battery"
-                app:cornerRadius="12dp"
-                android:visibility="gone" />
+                android:backgroundTint="#FF1565C0"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:text="📞 חייג למוקד בשלוחה ראשית"
+                app:cornerRadius="14dp" />
 
         </LinearLayout>
 
-        <!-- כותרת התראות אחרונות -->
+        <!-- כותרת התראות שרת -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -105,10 +103,11 @@
             android:paddingBottom="10dp">
 
             <TextView
+                android:id="@+id/alertsTitle"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="התראות אחרונות"
+                android:text="התראות נוכחיות"
                 android:textColor="@color/on_surface"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -118,7 +117,7 @@
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="כל ההיסטוריה ←"
+                android:text="היסטוריה מלאה ←"
                 android:textColor="@color/primary"
                 android:textSize="13sp"
                 android:minHeight="0dp"
@@ -126,7 +125,7 @@
                 android:paddingBottom="4dp" />
         </LinearLayout>
 
-        <!-- כרטיסי התראות אחרונות -->
+        <!-- כרטיסי התראות שרת -->
         <LinearLayout
             android:id="@+id/recentContainer"
             android:layout_width="match_parent"
@@ -142,7 +141,7 @@
             android:layout_marginTop="20dp"
             android:background="@color/surface_2" />
 
-        <!-- כפתורים תחתונים -->
+        <!-- כפתור הגדרות -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -151,30 +150,12 @@
             android:paddingTop="16dp">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTest"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:text="@string/main_test"
-                app:cornerRadius="12dp" />
-
-            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSettings"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:layout_marginTop="10dp"
                 android:text="@string/main_settings"
                 app:cornerRadius="12dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAbout"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="אודות וקרדיטים"
-                android:textColor="@color/on_surface_var" />
 
         </LinearLayout>
 

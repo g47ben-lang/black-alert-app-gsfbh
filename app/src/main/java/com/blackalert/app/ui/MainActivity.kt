@@ -12,10 +12,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.blackalert.app.R
 import com.blackalert.app.data.AlertEvent
+import com.blackalert.app.data.CitiesRepository
 import com.blackalert.app.data.Prefs
+import com.blackalert.app.data.ServerStateCache
 import com.blackalert.app.databinding.ActivityMainBinding
-import com.blackalert.app.service.AlertProcessor
-import com.blackalert.app.service.NavTarget
 import com.blackalert.app.service.PollingService
 import com.blackalert.app.util.NotificationHelper
 
@@ -26,11 +26,11 @@ class MainActivity : AppCompatActivity() {
 
     private val notifPermLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* רענון מצב */ refreshUi() }
+    ) { refreshUi() }
 
     private val locationPermLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { /* זמני הגעה/קרבה ישתמשו במיקום אם אושר */ }
+    ) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,27 +45,19 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnSettings.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         binding.btnHistory.setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
-        binding.btnTest.setOnClickListener { showTestOptions() }
-        binding.btnBattery.setOnClickListener { requestIgnoreBatteryOptimizations() }
-        binding.btnAbout.setOnClickListener { showAbout() }
-        binding.btnReport.setOnClickListener { confirmReportArrest() }
+        binding.btnCallExtradition.setOnClickListener { confirmCallExtradition() }
+        binding.btnCallMain.setOnClickListener { confirmCallMain() }
 
         requestNotificationPermission()
         requestLocationPermission()
-        ensureFullScreenPermission()   // ← בקשת הרשאת מסך-מלא (אנדרואיד 14+)
+        ensureFullScreenPermission()
 
-        // הפעלה ראשונה אחרי התקנה → הפניה לבחירת אזורי התראה
         if (!prefs.firstRunDone) {
             prefs.firstRunDone = true
             startActivity(Intent(this, CitiesSelectActivity::class.java))
         }
     }
 
-    /**
-     * מאנדרואיד 14 ומעלה — הרשאת USE_FULL_SCREEN_INTENT אינה ניתנת אוטומטית
-     * לאפליקציות מחוץ ל-Google Play. בלעדיה ההתראה תופיע רק כ-heads-up בסטטוס בר.
-     * כאן בודקים, ואם חסר — מסבירים ומפנים ישירות למסך האישור.
-     */
     private fun ensureFullScreenPermission() {
         if (Build.VERSION.SDK_INT < 34) return
         val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
@@ -114,33 +106,46 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         refreshUi()
         checkUpdateAsync()
-        loadRecentAlerts()
+        loadServerAlerts()
     }
 
-    /** טוען התראות אחרונות מהשרת ומציג כרטיסים לחיצים במסך הראשי. */
-    private fun loadRecentAlerts() {
+    /**
+     * טוען את ההתראות הנוכחיות מהשרת ושומר במטמון.
+     * אם השרת לא זמין — מציג את המטמון האחרון (ללא התראות שנמחקו מהשרת).
+     * לחיצה על "היסטוריה מלאה" פותחת את HistoryActivity עם כל ההיסטוריה המקומית.
+     */
+    private fun loadServerAlerts() {
         val container = binding.recentContainer
-        if (container.childCount == 0) {
-            container.addView(android.widget.TextView(this).apply {
-                text = "טוען…"; setTextColor(0xFFA8AAB5.toInt()); setPadding(8, 8, 8, 8)
-            })
-        }
+        container.removeAllViews()
+        container.addView(infoText("טוען…"))
+
         kotlin.concurrent.thread {
-            val result = runCatching { com.blackalert.app.net.BlackAlertApi.fetchHistory() }
+            var fromCache = false
+            val events = try {
+                val fetched = com.blackalert.app.net.BlackAlertApi.fetchHistory()
+                ServerStateCache.save(this, fetched)
+                fetched
+            } catch (e: Exception) {
+                fromCache = true
+                ServerStateCache.load(this)
+            }
+
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
                 container.removeAllViews()
-                result.onSuccess { events ->
-                    val recent = events.sortedByDescending { it.time }.take(8)
-                    if (recent.isEmpty()) {
-                        container.addView(infoText("אין התראות אחרונות."))
-                    } else {
-                        val repo = com.blackalert.app.data.CitiesRepository.get(this)
-                        recent.forEach { container.addView(recentCard(it, repo)) }
-                    }
-                }.onFailure {
-                    container.addView(infoText("לא ניתן לטעון התראות מהשרת כרגע."))
+                if (fromCache && events.isEmpty()) {
+                    container.addView(infoText("אין חיבור לשרת ואין נתונים שמורים."))
+                    return@runOnUiThread
                 }
+                if (events.isEmpty()) {
+                    container.addView(infoText("אין התראות פעילות כרגע."))
+                    return@runOnUiThread
+                }
+                if (fromCache) {
+                    container.addView(infoText("⚠ מציג נתונים שמורים — השרת אינו זמין כרגע"))
+                }
+                val repo = CitiesRepository.get(this)
+                events.sortedByDescending { it.time }.forEach { container.addView(alertCard(it, repo)) }
             }
         }
     }
@@ -149,7 +154,7 @@ class MainActivity : AppCompatActivity() {
         text = s; setTextColor(0xFFA8AAB5.toInt()); setPadding(8, 12, 8, 12); textSize = 14f
     }
 
-    private fun recentCard(ev: com.blackalert.app.data.AlertEvent, repo: com.blackalert.app.data.CitiesRepository): android.view.View {
+    private fun alertCard(ev: AlertEvent, repo: CitiesRepository): android.view.View {
         val card = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(24, 18, 24, 18)
@@ -179,7 +184,7 @@ class MainActivity : AppCompatActivity() {
         return card
     }
 
-    private fun openDetail(ev: com.blackalert.app.data.AlertEvent, repo: com.blackalert.app.data.CitiesRepository) {
+    private fun openDetail(ev: AlertEvent, repo: CitiesRepository) {
         val cityNames = ev.cities.joinToString(", ") { repo.cityByKey(it)?.he ?: it }
         val title = when (ev.eventType) { 0 -> "נסיון מעצר מ.צ."; 2 -> "התרעת מחסומים"; 3 -> "נסיון הסגרה"; else -> "התראה" }
         var lat = ev.lat; var lng = ev.lng
@@ -203,8 +208,35 @@ class MainActivity : AppCompatActivity() {
         startActivity(i)
     }
 
+    private fun confirmCallExtradition() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("🚨 דיווח על הסגרה")
+            .setMessage(
+                "פעולה זו תחייג ישירות למוקד \"צבע שחור\" ותעביר אותך לשלוחת הדיווח על הסגרה.\n\n" +
+                "מספר: ${com.blackalert.app.util.ReportArrest.NUMBER} · שלוחה ${com.blackalert.app.util.ReportArrest.EXTENSION}\n" +
+                "השלוחה תישלח אוטומטית לאחר המענה.\n\nלחייג עכשיו?"
+            )
+            .setPositiveButton("📞 חייג") { _, _ -> com.blackalert.app.util.ReportArrest.call(this) }
+            .setNegativeButton("ביטול", null)
+            .show()
+    }
+
+    private fun confirmCallMain() {
+        val number = com.blackalert.app.util.ReportArrest.NUMBER
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("📞 מוקד ראשי")
+            .setMessage("פעולה זו תחייג למוקד \"צבע שחור\" בשלוחה ראשית.\n\nמספר: $number\n\nלחייג עכשיו?")
+            .setPositiveButton("📞 חייג") { _, _ ->
+                runCatching {
+                    startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
+                }
+            }
+            .setNegativeButton("ביטול", null)
+            .show()
+    }
+
     private fun checkUpdateAsync() {
-        if (com.blackalert.app.BuildConfig.PLAY_STORE) return // ב-Play העדכונים דרך החנות
+        if (com.blackalert.app.BuildConfig.PLAY_STORE) return
         val now = System.currentTimeMillis()
         if (now - prefs.lastUpdateCheckMs < 6L * 60 * 60 * 1000) return
         kotlin.concurrent.thread {
@@ -237,7 +269,6 @@ class MainActivity : AppCompatActivity() {
             !notifOk -> "✗ חסרה הרשאת התראות"
             else -> "● מאזין להתראות"
         }
-        binding.btnBattery.visibility = if (isIgnoringBattery()) android.view.View.GONE else android.view.View.VISIBLE
     }
 
     private fun requestNotificationPermission() {
@@ -248,48 +279,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showTestOptions() {
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("בדיקת התראה")
-            .setMessage("כדי לראות את מסך ההתראה המלא — בחר \"בעוד 10 שניות\", נעל/כבה את המסך, והמתן.")
-            .setPositiveButton("עכשיו") { _, _ -> fireTestAlert() }
-            .setNeutralButton("בעוד 10 שניות") { _, _ ->
-                android.widget.Toast.makeText(this, "נעל את המסך — הבדיקה תופיע בעוד 10 שניות", android.widget.Toast.LENGTH_LONG).show()
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ fireTestAlert() }, 10_000)
-            }
-            .setNegativeButton("ביטול", null)
-            .show()
-    }
-
-    /** התראת בדיקה — מדמה אירוע מקומי דרך אותו צינור (כולל מסך מלא+צליל+ניווט). */
-    private fun fireTestAlert() {
-        val now = System.currentTimeMillis() / 1000
-        val test = AlertEvent(
-            notificationId = "test-$now", cities = listOf("בני ברק"), eventType = 3,
-            time = now, expireAt = now + 120, version = 1, status = null, silent = false,
-            isDrill = false, note = "התראת בדיקה — לחיצה על 'נווט' תפתח את בורר אפליקציות הניווט.",
-            address = "רחוב רבי עקיבא", lat = 32.0874, lng = 34.8324
-        )
-        NotificationHelper(this).showAlert(
-            test, withSound = true,
-            target = NavTarget(32.0874, 34.8324, "בני ברק, רחוב רבי עקיבא"), prefs = prefs
-        )
-    }
-
-    private fun confirmReportArrest() {
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("🚨 דיווח על מעצר")
-            .setMessage(
-                "פעולה זו תחייג ישירות למוקד \"צבע שחור\" ותעביר אותך לשלוחת הדיווח על מעצר.\n\n" +
-                "מספר: ${com.blackalert.app.util.ReportArrest.NUMBER} · שלוחה ${com.blackalert.app.util.ReportArrest.EXTENSION}\n" +
-                "השלוחה תישלח אוטומטית לאחר המענה.\n\nלחייג עכשיו?"
-            )
-            .setPositiveButton("📞 חייג למוקד") { _, _ -> com.blackalert.app.util.ReportArrest.call(this) }
-            .setNegativeButton("ביטול", null)
-            .show()
-    }
-
-    /** עדכון מתוך היישום: הורדת ה-APK והפעלת המתקין. */
     private fun doInAppUpdate(u: com.blackalert.app.net.UpdateChecker.Update) {
         val apkUrl = u.apkUrl
         if (apkUrl == null) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u.pageUrl))); return }
@@ -325,39 +314,6 @@ class MainActivity : AppCompatActivity() {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u.pageUrl)))
                 }
             }
-        }
-    }
-
-    private fun showAbout() {
-        val v = com.blackalert.app.BuildConfig.VERSION_NAME
-        val msg = android.text.Html.fromHtml(
-            "<b>צבע שחור</b> — גרסה $v<br><br>" +
-            "<b>דיווחים</b> - מערכת צבע שחור<br>טלפון <a href=\"tel:0738881241\">0738881241</a><br><br>" +
-            "<b>פיתוח</b> - <a href=\"https://github.com/613avi\">github.com/613avi</a><br><br>" +
-            "<small>הדיווחים נלקחים ממערכת \"צבע שחור\". היישום עצמאי ואינו מתופעל על ידה.</small>",
-            android.text.Html.FROM_HTML_MODE_COMPACT
-        )
-        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("אודות")
-            .setMessage(msg)
-            .setPositiveButton("סגור", null)
-            .show()
-        (dialog.findViewById<android.widget.TextView>(android.R.id.message))?.movementMethod =
-            android.text.method.LinkMovementMethod.getInstance()
-    }
-
-    private fun isIgnoringBattery(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
-        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
-        return pm.isIgnoringBatteryOptimizations(packageName)
-    }
-
-    private fun requestIgnoreBatteryOptimizations() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-        runCatching {
-            startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
-        }.onFailure {
-            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
         }
     }
 }
