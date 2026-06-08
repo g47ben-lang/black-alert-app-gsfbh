@@ -92,6 +92,9 @@ class AlertActivity : AppCompatActivity() {
         // X בפינה העליונה — סגירת המסך לגמרי.
         binding.btnCloseTop.setOnClickListener { AlertRinger.stop(); finish() }
 
+        binding.btnArrived.visibility = if (viewOnly) android.view.View.GONE else android.view.View.VISIBLE
+        binding.btnArrived.setOnClickListener { reportArrival(title, cities, address) }
+
         startAlerting(audible = withSound, live = !viewOnly)
     }
 
@@ -176,6 +179,35 @@ class AlertActivity : AppCompatActivity() {
         if (!live) return
         // הצליל+רטט דרך AlertRinger המרכזי — כך שכל סגירה/השתקה/ניווט (גם מההתראה) משתיקים מיד.
         AlertRinger.start(this, Prefs(this), audible)
+    }
+
+    private fun reportArrival(title: String, cities: String, address: String) {
+        binding.btnArrived.isEnabled = false
+        binding.btnArrived.text = "שולח…"
+        val cityList = cities.split(", ").filter { it.isNotBlank() }
+        val t = target
+        Thread {
+            val ok = runCatching {
+                com.blackalert.app.net.BlackAlertApi.reportArrival(
+                    eventType = intent.getIntExtra(EXTRA_EVENT_TYPE, 8),
+                    cities = cityList,
+                    address = address,
+                    lat = t?.lat,
+                    lng = t?.lng
+                )
+            }.isSuccess
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (ok) {
+                    binding.btnArrived.text = "✓ הדיווח נשלח"
+                    binding.btnArrived.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF1B5E20.toInt())
+                } else {
+                    binding.btnArrived.isEnabled = true
+                    binding.btnArrived.text = "הגעתי לזירה"
+                    android.widget.Toast.makeText(this, "שליחת הדיווח נכשלה — בדוק חיבור", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
     }
 
     override fun onDestroy() {

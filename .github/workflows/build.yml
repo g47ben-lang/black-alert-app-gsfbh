@@ -13,13 +13,6 @@ jobs:
     - name: Check out the code
       uses: actions/checkout@v4
 
-    - name: Check out signing repo
-      uses: actions/checkout@v4
-      with:
-        repository: g47ben-lang/black-alert-signing
-        token: ${{ secrets.SIGNING_REPO_TOKEN }}
-        path: signing
-
     - name: Set up Java
       uses: actions/setup-java@v4
       with:
@@ -29,14 +22,38 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build & sign Release APK
+    - name: Detect signing secrets
+      id: signing
+      run: |
+        if [ -n "$TOKEN" ]; then
+          echo "available=true" >> $GITHUB_OUTPUT
+        else
+          echo "available=false" >> $GITHUB_OUTPUT
+        fi
+      env:
+        TOKEN: ${{ secrets.SIGNING_REPO_TOKEN }}
+
+    - name: Check out signing keystore
+      if: steps.signing.outputs.available == 'true'
+      uses: actions/checkout@v4
+      with:
+        repository: 613avi/black-alert-signing
+        token: ${{ secrets.SIGNING_REPO_TOKEN }}
+        path: signing
+
+    - name: Build signed Release APK
+      if: steps.signing.outputs.available == 'true'
       env:
         KEYSTORE_PATH: ${{ github.workspace }}/signing/black-alert-release.jks
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
       run: ./gradlew assembleSideloadRelease
 
-    - name: Upload signed APK
+    - name: Build Debug APK (no signing secrets configured)
+      if: steps.signing.outputs.available == 'false'
+      run: ./gradlew assembleDebug
+
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: black-alert-signed
+        name: black-alert-apk
         path: "app/build/outputs/apk/**/*.apk"
