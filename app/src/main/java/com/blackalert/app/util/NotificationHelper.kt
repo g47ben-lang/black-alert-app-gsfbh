@@ -78,6 +78,7 @@ class NotificationHelper(private val context: Context) {
             putExtra(AlertActivity.EXTRA_NOTE, event.note)
             putExtra(AlertActivity.EXTRA_EVENT_TYPE, event.eventType)
             putExtra(AlertActivity.EXTRA_WITH_SOUND, audible)
+            putExtra(AlertActivity.EXTRA_NOTIF_ID, notifId)
             target?.let {
                 putExtra(AlertActivity.EXTRA_LAT, it.lat)
                 putExtra(AlertActivity.EXTRA_LNG, it.lng)
@@ -146,11 +147,15 @@ class NotificationHelper(private val context: Context) {
             }
             if (navPi != null) b.addAction(R.drawable.ic_navigate, context.getString(R.string.action_navigate), navPi)
             b.addAction(R.drawable.ic_close, context.getString(R.string.action_close), dismissPi)
+            b.setDeleteIntent(dismissPi)   // החלקה להסרת ההתראה → משתיק גם את הצליל
             if (withFullScreen && prefs.fullScreenAlert) b.setFullScreenIntent(fullScreenPi, true)
             nm.notify(notifId, b.build())
         }
 
         post(baseBody, cityNames, withFullScreen = true, mapBitmap = null)
+
+        // הצליל+רטט מנוגנים ע"י האפליקציה (לא ע"י ערוץ ההתראה) כדי שכל סגירה/השתקה תעצור אותם.
+        AlertRinger.start(context, prefs, audible)
 
         // כפיית מסך-מלא גם כשהמכשיר בשימוש פעיל (אנדרואיד מציג full-screen-intent כבאנר בלבד אז).
         if (prefs.fullScreenAlert && prefs.forceFullScreen && canForceFullScreen()) {
@@ -240,39 +245,28 @@ class NotificationHelper(private val context: Context) {
     }
 
     /**
-     * ערוצי ההתראה נבנים מחדש כשמשהו ב"חתימה" משתנה (צליל/רטט/רטט-בלבד/עקיפת-DND),
-     * כי אנדרואיד לא מאפשר לשנות מאפייני ערוץ קיים. בקרת ה-DND דורשת גישת מדיניות התראות.
+     * ערוצי ההתראה — *שקטים* מבחינת המערכת (ללא צליל וללא רטט): הצליל והרטט מנוגנים ע"י
+     * AlertRinger כדי שניתן יהיה לעצור אותם ("סגור"/"השתקה"/"נווט"). הערוץ נשאר IMPORTANCE_HIGH
+     * כדי להציג heads-up. בקרת ה-DND דורשת גישת מדיניות התראות.
      */
     private fun ensureAlertChannels(prefs: Prefs) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val vibrate = prefs.vibrate || prefs.vibrateOnly
         val dndOk = prefs.overrideDnd && nm.isNotificationPolicyAccessGranted
-        val soundKey = if (prefs.soundName == "custom") "custom:${prefs.customSoundUri}" else prefs.soundName
-        val sig = "$soundKey|v=$vibrate|dnd=$dndOk|vo=${prefs.vibrateOnly}"
+        val sig = "silent|dnd=$dndOk"
         val store = context.getSharedPreferences("ba_channel", Context.MODE_PRIVATE)
         val changed = store.getString("sig", null) != sig
 
-        if (changed || nm.getNotificationChannel(CH_ALERT_SILENT) == null) {
-            nm.deleteNotificationChannel(CH_ALERT_SILENT)
-            val ch = NotificationChannel(CH_ALERT_SILENT, context.getString(R.string.ch_alert_silent), NotificationManager.IMPORTANCE_HIGH)
-            ch.setSound(null, null)
-            ch.enableVibration(vibrate)
-            ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            if (dndOk) ch.setBypassDnd(true)
-            nm.createNotificationChannel(ch)
-        }
-        if (changed || nm.getNotificationChannel(CH_ALERT_SOUND) == null) {
-            nm.deleteNotificationChannel(CH_ALERT_SOUND)
-            val attrs = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-            val ch = NotificationChannel(CH_ALERT_SOUND, context.getString(R.string.ch_alert_sound), NotificationManager.IMPORTANCE_HIGH)
-            ch.setSound(soundUri(prefs), attrs)
-            ch.enableVibration(prefs.vibrate)
-            ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            if (dndOk) ch.setBypassDnd(true)
-            nm.createNotificationChannel(ch)
+        for (id in listOf(CH_ALERT_SILENT, CH_ALERT_SOUND)) {
+            if (changed || nm.getNotificationChannel(id) == null) {
+                nm.deleteNotificationChannel(id)
+                val name = if (id == CH_ALERT_SOUND) R.string.ch_alert_sound else R.string.ch_alert_silent
+                val ch = NotificationChannel(id, context.getString(name), NotificationManager.IMPORTANCE_HIGH)
+                ch.setSound(null, null)          // הצליל מנוגן ע"י AlertRinger, לא ע"י הערוץ
+                ch.enableVibration(false)        // הרטט מנוגן ע"י AlertRinger
+                ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                if (dndOk) ch.setBypassDnd(true)
+                nm.createNotificationChannel(ch)
+            }
         }
         if (changed) store.edit().putString("sig", sig).apply()
     }
